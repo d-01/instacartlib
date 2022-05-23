@@ -3,7 +3,6 @@ from .transactions import drop_orders
 from .transactions import read_transactions_csv
 from .transactions import preprocess_raw_columns
 from .transactions import check_df_raw
-from .transactions import get_raw_to_inner_id_map
 from .transactions import get_transactions_csv_path
 from .transactions import download_transactions_csv
 
@@ -64,34 +63,15 @@ def test_check_df_raw(df_trns_raw):
 def test_df_trns_no_nans(df_trns):
     assert df_trns.notna().all(axis=None)
 
+
 def test_df_trns_col_types(df_trns, expected_col_types):
     assert df_trns.dtypes.to_dict() == expected_col_types
 
 
-def test_preprocess_raw_columns_remap_ids(df_trns_raw):
-    output = preprocess_raw_columns(df_trns_raw, remap_ids=True)
-    assert type(output) == tuple
-    assert len(output) == 3
-
-    (df, uids, iids) = output
-    assert type(df) == pd.DataFrame
-    assert df.shape == (1468, 9)
-    assert type(uids) == pd.Series
-    assert uids.shape == (10,)
-    assert type(iids) == pd.Series
-    assert iids.shape == (577,)
-
-
-def test_get_raw_to_inner_id_map():
-    raw_ids = [1, 1, 1, 11, 11, 12, 12, 1]
-    expected = {1: 0, 11: 1, 12: 2}
-    output = get_raw_to_inner_id_map(raw_ids)
-    assert type(output) == pd.Series
-    assert output.to_dict() == expected
-
-    expected_2 = {1: 1, 11: 2, 12: 3}
-    output_2 = get_raw_to_inner_id_map(raw_ids, start_from=1)
-    assert output_2.to_dict() == expected_2
+def test_preprocess_raw_columns(df_trns_raw):
+    output = preprocess_raw_columns(df_trns_raw)
+    assert type(output) == pd.DataFrame
+    assert output.shape == (1468, 9)
 
 
 def test_get_transactions_csv_path(test_data_dir):
@@ -117,3 +97,5 @@ def test_drop_orders(df_trns):
 def test_download_transactions_csv(fake_gdown_cached_download):
     with pytest.raises(GdownCachedDownloadIsCalled):
         download_transactions_csv('.')
+
+

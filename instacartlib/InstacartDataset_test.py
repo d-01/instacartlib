@@ -12,30 +12,10 @@ def ds_train(test_data_dir):
     return InstacartDataset().from_dir(test_data_dir)
 
 
-def test_InstacartDataset_from_dir_with_inner_ids(test_data_dir):
-    ds = InstacartDataset(generate_inner_ids=True).from_dir(test_data_dir)
-
-    assert type(ds) == InstacartDataset
-    assert type(ds.df_trns) == pd.DataFrame
-    assert np.issubdtype(ds.df_trns.uid.dtype, np.integer)
-    assert ds.df_trns.uid.values[0] == 0
-    assert np.issubdtype(ds.df_trns.iid.dtype, np.integer)
-    assert ds.df_trns.iid.values[0] == 0
-    assert type(ds.uid_raw_to_inner) == pd.Series
-    assert type(ds.iid_raw_to_inner) == pd.Series
-    assert type(ds.uid_inner_to_raw) == pd.Series
-    assert type(ds.iid_inner_to_raw) == pd.Series
-
-
-def test_InstacartDataset_from_dir_with_raw_ids(test_data_dir):
+def test_InstacartDataset_from_dir(test_data_dir):
     ds = InstacartDataset().from_dir(test_data_dir)
-
     assert type(ds) == InstacartDataset
     assert type(ds.df_trns) == pd.DataFrame
-    assert ds.uid_raw_to_inner is None
-    assert ds.iid_raw_to_inner is None
-    assert ds.uid_inner_to_raw is None
-    assert ds.iid_inner_to_raw is None
 
 
 def test_InstacartDataset_repr(ds_train):

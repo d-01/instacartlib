@@ -98,34 +98,18 @@ def check_df_raw(df_raw):
                          'increasing order per order_id.')
 
 
-def get_raw_to_inner_id_map(raw_ids, start_from=0):
-    unique_raw_ids = pd.unique(raw_ids)  # no sorting is done
-    seq_inner_ids = np.arange(len(unique_raw_ids), dtype=np.uint32) + start_from
-    return pd.Series(seq_inner_ids, index=unique_raw_ids)
-
-
-def preprocess_raw_columns(df_raw, remap_ids=False):
+def preprocess_raw_columns(df_raw):
     """
     df_raw: DataFrame
         Columns (9): order_id, user_id, order_number, order_dow,
             order_hour_of_day, days_since_prior_order, product_id,
             add_to_cart_order, reordered
-    remap_ids: {False, True}
-        Replace values in `user_id` and `product_id` columns with integer ids.
-        If True the function will return 3 element tuple:
-        (df, uids_raw_to_inner, iids_raw_to_inner).
 
     Return:
     -------
-    df or tuple(df, uids_raw_to_inner, iids_raw_to_inner), where
-
     df: DataFrame
         Columns (9): oid, uid, iord, iid, reord, dow, hour, days_prev,
             in_cart_ord
-    uids_raw_to_inner: Series
-        Maps raw user ids to integer ids. If remap_ids == True.
-    iids_raw_to_inner: Series
-        Maps raw item (product) ids to integer ids. If remap_ids == True.
     """
     iord = (df_raw.drop_duplicates('order_id')
                 .set_index('order_id')
@@ -134,31 +118,18 @@ def preprocess_raw_columns(df_raw, remap_ids=False):
                 .astype(np.uint8)
                 .rename('iord'))
 
-    user_ids = df_raw.user_id
-    item_ids = df_raw.product_id
-    if remap_ids:
-        uids_raw_to_inner = get_raw_to_inner_id_map(user_ids)
-        user_ids = user_ids.map(uids_raw_to_inner)
-
-        iids_raw_to_inner = get_raw_to_inner_id_map(item_ids)
-        item_ids = item_ids.map(iids_raw_to_inner)
-
     df = pd.DataFrame({
         'oid'         : df_raw.order_id,
-        'uid'         : user_ids,
+        'uid'         : df_raw.user_id,
         'iord'        : df_raw.order_id.map(iord),
-        'iid'         : item_ids,
+        'iid'         : df_raw.product_id,
         'reord'       : df_raw.reordered,
         'dow'         : df_raw.order_dow,
         'hour'        : df_raw.order_hour_of_day,
         'days_prev'   : df_raw.days_since_prior_order.fillna(-1).astype('int8'),
         'in_cart_ord' : df_raw.add_to_cart_order,
     })
-    if remap_ids:
-        return (df, uids_raw_to_inner, iids_raw_to_inner)
-    else:
-        return df
-
+    return df
 
 
 # Probable improvement: verify `iord` column has right numbering format.

@@ -31,7 +31,17 @@ def df_trns_raw(transactions_csv_path):
 
 @pytest.fixture
 def df_trns(df_trns_raw):
-    return preprocess_raw_columns(df_trns_raw, remap_ids=True)[0]
+    return preprocess_raw_columns(df_trns_raw)
+
+
+@pytest.fixture
+def uids(df_trns):
+    return df_trns.uid.unique()
+
+
+@pytest.fixture
+def iids(df_trns):
+    return df_trns.iid.unique()
 
 
 @pytest.fixture

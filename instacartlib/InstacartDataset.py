@@ -56,17 +56,10 @@ class InstacartDataset:
       value for the initial order)
     - in_cart_ord - add to cart order (1-based)
     """
-    def __init__(self, generate_inner_ids=False, show_progress=False):
-        self.generate_inner_ids = generate_inner_ids
+    def __init__(self, show_progress=False):
         self.show_progress = show_progress
 
         self.df_trns = None
-
-        self.uid_raw_to_inner = None
-        self.iid_raw_to_inner = None
-
-        self.uid_inner_to_raw = None
-        self.iid_inner_to_raw = None
 
 
     def _info(self, message):
@@ -96,18 +89,7 @@ class InstacartDataset:
         with self._timer('Reading `transactions.csv` ...'):
             df_raw = read_transactions_csv(transaction_csv_path, n_rows)
         with self._timer('Preprocessing columns ...'):
-            prep = preprocess_raw_columns(df_raw,
-                remap_ids=self.generate_inner_ids)
-
-        if self.generate_inner_ids:
-            df, uids, iids = prep
-            self.df_trns = df
-            self.uid_raw_to_inner = uids
-            self.iid_raw_to_inner = iids
-            self.uid_inner_to_raw = pd.Series(uids.index, index=uids.values)
-            self.iid_inner_to_raw = pd.Series(iids.index, index=iids.values)
-        else:
-            self.df_trns = prep
+            self.df_trns = preprocess_raw_columns(df_raw)
         return self
 
 
