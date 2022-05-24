@@ -1,8 +1,14 @@
 """
-Set of functions to read raw data from `transactions.csv` and perform basic preprocessing:
-1. Choose appropriate dtypes for columns.
-2. Deal with NaNs.
-3. Convert user ids and product ids from raw arbitrary type to inner (int, 0-based) type.
+Transactions API.
+
+Capabilities:
+* Load raw transactions data from `*.csv` or `*.zip` files into DataFrame with 
+  appropriate dtype.
+* Deal with NaNs.
+* Limit number of orders to N most recent (per user)
+
+Capabilities (planned):
+* Generate train/test datasets for classification model
 """
 
 from pathlib import Path
@@ -11,9 +17,14 @@ import numpy as np
 import pandas as pd
 
 from .utils import download_from_info
+from .utils import dummy_contextmanager
+from .utils import timer_contextmanager
+
 
 TRANSACTIONS_FILENAME = 'transactions.csv'
 TRANSACTIONS_ZIP_FILENAME = 'transactions.csv.zip'
+REDUCED_DATASET_N_ROWS = 1_571_044  # 6000 user ids
+
 
 class TRANSACTIONS_DOWNLOAD_INFO:
     NAME = "transactions.csv.zip"  # 154.5MB
@@ -148,3 +159,95 @@ def drop_orders(df_trns, keep_n=None):
     if keep_n is not None:
         df_trns = df_trns[df_trns.iord < keep_n]
     return df_trns
+
+
+class Transactions:
+    """
+    Transactions data manipulator.
+
+    Transactions dataframe (`df_trns`):
+    - oid - order id (raw)
+    - uid - user id
+    - iord - order (basket) index in reverse temporal order
+      * Example: [4, 3, 2, 1, 0], means 0 is the newest, 4 is the oldest.
+      * Conveniet for taking target basket: `df[df.iord==0]` or limiting history
+        to N most recent orders, like: `df[df.iord > N]`.
+    - iid - item id (raw product id)
+    - reord - was item ordered previously? 1=yes, 0=no
+    - dow - day of week (0-6)
+    - hour - hour of day (0-23)
+    - days_prev - number of days passed since previous order (-1 = unknown
+      value for the initial order)
+    - in_cart_ord - add to cart order (1-based)
+
+    show_progress: {False, True}
+        Print messages with progress information for long operations.
+    """
+    def __init__(self, show_progress=False):
+        self.show_progress = show_progress
+
+        self.df_trns = None
+
+
+    def _info(self, message):
+        if self.show_progress:
+            print(message)
+
+
+    def _timer(self, message):
+        if self.show_progress:
+            return timer_contextmanager(message)
+        else:
+            return dummy_contextmanager()
+
+
+    def from_dir(self, path_dir='.', reduced=False):
+        """
+        Read files `transactions.csv` and `products.csv` with raw data from
+        current path or given local directory into DataFrame.
+
+        path_dir: str or pathlib.Path
+            Path to directory with `transactions.csv` or `transactions.csv.zip` files.
+        reduced: {False, True}
+            Read transactions for the first 6000 users.
+        """
+        transaction_csv_path = get_transactions_csv_path(path_dir)
+        n_rows = REDUCED_DATASET_N_ROWS if reduced else None
+        with self._timer('Reading `transactions.csv` ...'):
+            df_raw = read_transactions_csv(transaction_csv_path, n_rows)
+        with self._timer('Preprocessing columns ...'):
+            self.df_trns = preprocess_raw_columns(df_raw)
+        return self
+
+
+    def load_from_gdrive(self, path_dir='.'):
+        """
+        Download files `transactions.csv` and `products.csv` from gdrive
+        using url or id to current path or given directory.
+        """
+        download_transactions_csv(path_dir, self.show_progress)
+
+
+    def limit_train_orders(self, n_most_recent=None):
+        """
+        For each user drop orders except n most recent ones.
+
+        n_most_recent: None or int
+            Number of the most recent orders in user's history to keep. If None
+            keep all orders (no-op).
+        """
+        if n_most_recent is not None:
+            self.df_trns = self.df_trns[self.df_trns.iord < n_most_recent]
+        return self
+
+
+    def __repr__(self):
+        class_name = self.__class__.__name__
+        df_train_shape = None if self.df_trns is None else self.df_trns.shape
+        return f'<{class_name} df_trns={df_train_shape}>'
+
+
+
+"""
+todo: recalculate order number
+"""

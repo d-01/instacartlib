@@ -1,10 +1,10 @@
 
-from .transactions import drop_orders
-from .transactions import read_transactions_csv
-from .transactions import preprocess_raw_columns
-from .transactions import check_df_raw
-from .transactions import get_transactions_csv_path
-from .transactions import download_transactions_csv
+from .Transactions import drop_orders
+from .Transactions import read_transactions_csv
+from .Transactions import preprocess_raw_columns
+from .Transactions import check_df_raw
+from .Transactions import get_transactions_csv_path
+from .Transactions import download_transactions_csv
 
 from .conftest import GdownCachedDownloadIsCalled
 
