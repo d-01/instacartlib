@@ -1,5 +1,5 @@
 
-from .Transactions import Transactions
+from instacartlib.Transactions import Transactions
 
 import pytest
 

@@ -1,6 +1,6 @@
 
-from .FeatureExtractor import get_ui_freq
-from .FeatureExtractor import get_ui_avg_cart_pos
+from instacartlib.FeatureExtractor import get_ui_freq
+from instacartlib.FeatureExtractor import get_ui_avg_cart_pos
 
 import pandas as pd
 

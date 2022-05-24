@@ -1,5 +1,5 @@
-from .utils import timer_contextmanager
-from .utils import dummy_contextmanager
+from instacartlib.utils import timer_contextmanager
+from instacartlib.utils import dummy_contextmanager
 
 import pytest
 

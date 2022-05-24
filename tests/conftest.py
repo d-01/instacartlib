@@ -1,6 +1,6 @@
 
-from .Transactions import read_transactions_csv
-from .Transactions import preprocess_raw_columns
+from instacartlib.Transactions import read_transactions_csv
+from instacartlib.Transactions import preprocess_raw_columns
 
 import pathlib
 
@@ -14,7 +14,7 @@ class GdownCachedDownloadIsCalled(Exception):
 
 @pytest.fixture
 def test_data_dir():
-    return pathlib.Path(r'instacartlib/testing_data')
+    return pathlib.Path(r'tests/testing_data')
 
 
 @pytest.fixture

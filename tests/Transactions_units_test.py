@@ -1,10 +1,10 @@
 
-from .Transactions import drop_orders
-from .Transactions import read_transactions_csv
-from .Transactions import preprocess_raw_columns
-from .Transactions import check_df_raw
-from .Transactions import get_transactions_csv_path
-from .Transactions import download_transactions_csv
+from instacartlib.Transactions import drop_orders
+from instacartlib.Transactions import read_transactions_csv
+from instacartlib.Transactions import preprocess_raw_columns
+from instacartlib.Transactions import check_df_raw
+from instacartlib.Transactions import get_transactions_csv_path
+from instacartlib.Transactions import download_transactions_csv
 
 from .conftest import GdownCachedDownloadIsCalled
 
