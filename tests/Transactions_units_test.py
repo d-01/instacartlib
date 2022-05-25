@@ -4,9 +4,6 @@ from instacartlib.Transactions import read_transactions_csv
 from instacartlib.Transactions import preprocess_raw_columns
 from instacartlib.Transactions import check_df_raw
 from instacartlib.Transactions import get_transactions_csv_path
-from instacartlib.Transactions import download_transactions_csv
-
-from .conftest import GdownCachedDownloadIsCalled
 
 import pytest
 import numpy as np
@@ -92,10 +89,5 @@ def test_drop_orders(df_trns):
 
     df_trns_0_mro = drop_orders(df_trns, 0)
     assert df_trns_0_mro.shape == (0, 9)
-
-
-def test_download_transactions_csv(fake_gdown_cached_download):
-    with pytest.raises(GdownCachedDownloadIsCalled):
-        download_transactions_csv('.')
 
 
