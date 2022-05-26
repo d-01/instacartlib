@@ -29,3 +29,24 @@ def download_from_info(download_info, path_dir='.', show_progress=False):
     return path
 
 
+def format_size(size_bytes):
+    if size_bytes < 0:
+        raise ValueError(f'size expected to be >= 0, got: {size_bytes}')
+
+    size_kb = round(size_bytes / 1024)
+    if size_kb < 1000:
+        return f'{size_kb} KB'
+
+    size_mb = round(size_kb / 1024)
+    if size_mb < 1000:
+        return f'{size_mb} MB'
+        
+    size_gb = round(size_mb / 1024)
+    return f'{size_gb} GB'
+
+
+def get_df_info(df):
+    memory_usage = df.memory_usage(deep=True).sum()
+    return (f'<{type(df).__name__} '
+            f'shape={df.shape} '
+            f'memory={format_size(memory_usage)}>')
