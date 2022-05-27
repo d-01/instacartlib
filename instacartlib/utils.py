@@ -33,7 +33,7 @@ def format_size(size_bytes):
     if size_bytes < 0:
         raise ValueError(f'size expected to be >= 0, got: {size_bytes}')
 
-    size_kb = round(size_bytes / 1024)
+    size_kb = 1 if 0 < size_bytes < 1024 else round(size_bytes / 1024)
     if size_kb < 1000:
         return f'{size_kb} KB'
 

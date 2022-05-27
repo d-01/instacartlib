@@ -24,8 +24,7 @@ def test_dummy_contextmanager(capsys):
 
 @pytest.mark.parametrize("test_input,expected", [
     (0, '0 KB'),
-    (512, '0 KB'),
-    (513, '1 KB'),
+    (1, '1 KB'),
     (1024 + 511, '1 KB'),
     (1024 + 512, '2 KB'),
     (1024 * 999, '999 KB'),
