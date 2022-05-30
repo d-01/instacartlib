@@ -46,8 +46,63 @@ def test_Transactions_load_from_gdrive(fake_gdown_cached_download):
         Transactions().load_from_gdrive('.')
 
 
-def test_Transactions_drop_orders(transactions):
-    transactions.drop_orders(keep_n=5)
+def test_Transactions_drop_last_orders_n_5(transactions):
+    """ First 2 users' orders:
+    ```
+             oid  uid  iord
+    0    2539329    1     9
+    5    2398795    1     8
+    11    473747    1     7
+    16   2254736    1     6
+    21    431534    1     5
+    29   3367565    1     4
+    33    550135    1     3
+    38   3108588    1     2
+    44   2295261    1     1
+    50   2550362    1     0
+    59   2168274    2    13
+    72   1501582    2    12
+    78   1901567    2    11
+    83    738281    2    10
+    96   1673511    2     9
+    109  1199898    2     8
+    130  3194192    2     7
+    144   788338    2     6
+    160  1718559    2     5
+    186  1447487    2     4
+    195  1402090    2     3
+    210  3186735    2     2
+    229  3268552    2     1
+    238   839880    2     0
+    ...
+    ```
+    """
+    transactions.drop_last_orders(n=5)
+
+    df_user1 = transactions.df[transactions.df.uid == 1]
+
+    assert 2539329 in df_user1.oid.values  #  1st of 10
+    assert  431534 in df_user1.oid.values  #  5th of 10
+    assert 3367565 not in df_user1.oid.values      #  6th of 10
+    assert 2550362 not in df_user1.oid.values      # 10th of 10
+
+    # dynamic column is updated automatically
+    assert df_user1.iord.drop_duplicates().to_list() == [4, 3, 2, 1, 0]
+
+    df_user2 = transactions.df[transactions.df.uid == 2]
+
+    assert 2168274 in df_user2.oid.values  #  1st of 14
+    assert 1718559 in df_user2.oid.values  #  9th of 14
+    assert 1447487 not in df_user2.oid.values      # 10th of 14
+    assert  839880 not in df_user2.oid.values      # 14th of 14
+
+    # dynamic column is updated automatically
+    assert (df_user2.iord.drop_duplicates().to_list()
+        == [8, 7, 6, 5, 4, 3, 2, 1, 0])
+
+
+def test_Transactions_keep_last_orders_n_5(transactions):
+    transactions.keep_last_orders(n=5)
 
     df_user1 = transactions.df[transactions.df.uid == 1]
 
@@ -68,3 +123,15 @@ def test_Transactions_drop_orders(transactions):
 
     # dynamic column is updated automatically
     assert df_user2.iord.drop_duplicates().to_list() == [4, 3, 2, 1, 0]
+
+
+def test_Transactions_drop_last_orders_n_required(transactions):
+    with pytest.raises(TypeError,
+            match=r'missing \d+ required positional argument'):
+        transactions.drop_last_orders()
+
+
+def test_Transactions_keep_last_orders_n_required(transactions):
+    with pytest.raises(TypeError,
+            match=r'missing \d+ required positional argument'):
+        transactions.keep_last_orders()

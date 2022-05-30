@@ -204,34 +204,6 @@ def preprocess_raw_columns(df_raw):
     return df
 
 
-# Probable improvement: verify `iord` column has right numbering format.
-def drop_orders(df_trns, keep_n=None, use_iord=False):
-    """
-    For each user drop orders except n most recent ones.
-
-    df_trns: DataFrame
-        DataFrame with users' transactions. Transactions are assumed to be 
-        sorted per user in temporal order (from oldest to newest).
-    n_most_recent: None or int
-        Number of the most recent orders in user's history to keep. If None
-        keep all orders (no-op).
-    use_iord: {False, True}
-        If DataFrame has an `iord` column with reversed order index, it 
-        can be used to avoid expensive computations.
-        *Reversed order index* means user's orders are indexed as follows: 
-        [n-1, n-2, ..., 2, 1, 0]. Where `n` is the total number of orders 
-        and `0` is the last (most recent) order.
-    """
-    if keep_n is None:
-        return df_trns
-    
-    if use_iord:
-        return df_trns[df_trns.iord < keep_n]
-    else:
-        oids = df_trns.drop_duplicates('oid').groupby('uid').oid.tail(keep_n)
-        return df_trns[df_trns.oid.isin(oids)]
-
-
 class Transactions:
     """
     Transactions data manipulator.
@@ -278,13 +250,13 @@ class Transactions:
             return dummy_contextmanager()
 
 
-    def _update_dynamic_columns(self):
+    def _update_iord(self):
         self.df = update_iord(self.df, start_count=self.iord_start_count)
 
 
-    def drop_orders(self, keep_n=None):
-        self.df = drop_orders(self.df, keep_n=keep_n, use_iord=True)
-        self._update_dynamic_columns()
+    def drop_last_orders(self, n):
+        self.df = self.df[self.df.iord >= n]
+        self._update_iord()
         return self
 
 
@@ -294,7 +266,8 @@ class Transactions:
         current path or given local directory into DataFrame.
 
         path_dir: str or pathlib.Path
-            Path to directory with `transactions.csv` or `transactions.csv.zip` files.
+            Path to directory with `transactions.csv` or `transactions.csv.zip` 
+            files.
         reduced: {False, True}
             Read transactions for the first 6000 users.
         """
@@ -304,7 +277,12 @@ class Transactions:
             self.df = read_transactions_csv(transactions_csv_path, n_rows)
         with self._timer('  Preprocessing columns ...'):
             self._preprocess_raw_columns()
-            self._update_dynamic_columns()
+            self._update_iord()
+        return self
+
+
+    def keep_last_orders(self, n):
+        self.df = self.df[self.df.iord < n]
         return self
 
 
