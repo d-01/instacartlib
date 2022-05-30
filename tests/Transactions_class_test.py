@@ -46,4 +46,25 @@ def test_Transactions_load_from_gdrive(fake_gdown_cached_download):
         Transactions().load_from_gdrive('.')
 
 
+def test_Transactions_drop_orders(transactions):
+    transactions.drop_orders(keep_n=5)
 
+    df_user1 = transactions.df[transactions.df.uid == 1]
+
+    assert 2539329 not in df_user1.oid.values  #  1st of 10
+    assert  431534 not in df_user1.oid.values  #  5th of 10
+    assert 3367565 in df_user1.oid.values      #  6th of 10
+    assert 2550362 in df_user1.oid.values      # 10th of 10
+
+    # dynamic column is updated automatically
+    assert df_user1.iord.drop_duplicates().to_list() == [4, 3, 2, 1, 0]
+
+    df_user2 = transactions.df[transactions.df.uid == 2]
+
+    assert 2168274 not in df_user2.oid.values  #  1st of 13
+    assert 1718559 not in df_user2.oid.values  #  8th of 13
+    assert 1447487 in df_user2.oid.values      #  9th of 13
+    assert  839880 in df_user2.oid.values      # 13th of 13
+
+    # dynamic column is updated automatically
+    assert df_user2.iord.drop_duplicates().to_list() == [4, 3, 2, 1, 0]

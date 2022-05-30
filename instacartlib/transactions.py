@@ -107,6 +107,76 @@ def check_df_raw(df_raw):
                          'increasing order per order_id.')
 
 
+def get_iord(df, start_count=0):
+    """
+    Input (table, DataFrame):
+        Order A, User 1
+        Order A, User 1
+        Order B, User 1
+        Order C, User 1
+        Order D, User 2
+        Order D, User 2
+        Order E, User 2
+    Output (mapping, Series):
+        Order A: 2
+        Order B: 1
+        Order C: 0
+        Order D: 1
+        Order E: 0
+    
+    Parameters:
+    -----------
+    df: DataFrame
+        Transactions data with columns:
+        - oid - order id
+        - uid - user id
+    start_count: int
+        Lowest index.
+    
+    Return:
+    -------
+    iord: Series
+        oid -> iord
+    """
+    orders = df.drop_duplicates('oid').set_index('oid')
+    orders_reverse_index = (orders.groupby('uid')
+                                  .cumcount(ascending=False)
+                                  .rename('iord'))
+    return orders_reverse_index + start_count
+
+
+def update_iord(df, start_count=0):
+    """
+    Update `iord` column.
+    - iord - order (basket) index in reverse temporal order
+      * Example: [4, 3, 2, 1, 0], means 0 is the newest, 4 is the oldest.
+
+    Notes:
+    * Rows in `df` assumed to be sorted in temporal order by user.
+    * Original values of `iord` are ignored.
+
+    Parameters:
+    -----------
+    df: DataFrame
+        Transactions data with columns:
+        - oid - order id
+        - uid - user id
+        - iord - order number (optional)
+    start_count: int
+        Lowest index.
+
+    Return:
+    -------
+    updated_df: DataFrame
+        Input DataFrame with `iord` column reassigned.
+    """
+    iord = get_iord(df, start_count=start_count)
+    if 'iord' in df.columns:
+        iord = iord.astype(df.iord.dtype)
+    iord_updated = df.oid.map(iord)
+    return df.assign(iord=iord_updated)
+
+
 def preprocess_raw_columns(df_raw):
     """
     df_raw: DataFrame
@@ -120,17 +190,10 @@ def preprocess_raw_columns(df_raw):
         Columns (9): oid, uid, iord, iid, reord, dow, hour, days_prev,
             in_cart_ord
     """
-    iord = (df_raw.drop_duplicates('order_id')
-                .set_index('order_id')
-                .groupby('user_id')
-                .cumcount(ascending=False)
-                .astype(np.uint8)
-                .rename('iord'))
-
     df = pd.DataFrame({
         'oid'         : df_raw.order_id,
         'uid'         : df_raw.user_id,
-        'iord'        : df_raw.order_id.map(iord),
+        'iord'        : df_raw.order_number,
         'iid'         : df_raw.product_id,
         'reord'       : df_raw.reordered,
         'dow'         : df_raw.order_dow,
@@ -142,21 +205,31 @@ def preprocess_raw_columns(df_raw):
 
 
 # Probable improvement: verify `iord` column has right numbering format.
-def drop_orders(df_trns, keep_n=None):
+def drop_orders(df_trns, keep_n=None, use_iord=False):
     """
     For each user drop orders except n most recent ones.
 
     df_trns: DataFrame
-        DataFrame with users' transactions, where orders are numbered
-        `0, 1, 2, ...` from the most recent to the oldest.
-        `iord=0` is the last (most recent) order.
+        DataFrame with users' transactions. Transactions are assumed to be 
+        sorted per user in temporal order (from oldest to newest).
     n_most_recent: None or int
         Number of the most recent orders in user's history to keep. If None
         keep all orders (no-op).
+    use_iord: {False, True}
+        If DataFrame has an `iord` column with reversed order index, it 
+        can be used to avoid expensive computations.
+        *Reversed order index* means user's orders are indexed as follows: 
+        [n-1, n-2, ..., 2, 1, 0]. Where `n` is the total number of orders 
+        and `0` is the last (most recent) order.
     """
-    if keep_n is not None:
-        df_trns = df_trns[df_trns.iord < keep_n]
-    return df_trns
+    if keep_n is None:
+        return df_trns
+    
+    if use_iord:
+        return df_trns[df_trns.iord < keep_n]
+    else:
+        oids = df_trns.drop_duplicates('oid').groupby('uid').oid.tail(keep_n)
+        return df_trns[df_trns.oid.isin(oids)]
 
 
 class Transactions:
@@ -181,10 +254,21 @@ class Transactions:
     show_progress: {False, True}
         Print messages with progress information for long operations.
     """
-    def __init__(self, show_progress=False):
+    def __init__(self, iord_start_count=0, show_progress=False):
+        self.iord_start_count = iord_start_count
         self.show_progress = show_progress
 
         self.df = None
+
+
+    def __repr__(self):
+        class_name = self.__class__.__name__
+        df_shape = None if self.df is None else self.df.shape
+        return f'<{class_name} df={df_shape}>'
+
+
+    def _preprocess_raw_columns(self):
+        self.df = preprocess_raw_columns(self.df)
 
 
     def _timer(self, message):
@@ -194,13 +278,14 @@ class Transactions:
             return dummy_contextmanager()
 
 
-    def load_from_gdrive(self, path_dir='.'):
-        """
-        Download files `transactions.csv` and `products.csv` from gdrive
-        using url or id to current path or given directory.
-        """
-        download_from_info(TRANSACTIONS_DOWNLOAD_INFO, path_dir,
-            self.show_progress)
+    def _update_dynamic_columns(self):
+        self.df = update_iord(self.df, start_count=self.iord_start_count)
+
+
+    def drop_orders(self, keep_n=None):
+        self.df = drop_orders(self.df, keep_n=keep_n, use_iord=True)
+        self._update_dynamic_columns()
+        return self
 
 
     def from_dir(self, path_dir='.', reduced=False):
@@ -216,27 +301,17 @@ class Transactions:
         transactions_csv_path = get_transactions_csv_path(path_dir)
         n_rows = REDUCED_DATASET_N_ROWS if reduced else None
         with self._timer(f'Reading "{transactions_csv_path.name}" ...'):
-            df_raw = read_transactions_csv(transactions_csv_path, n_rows)
+            self.df = read_transactions_csv(transactions_csv_path, n_rows)
         with self._timer('  Preprocessing columns ...'):
-            self.df = preprocess_raw_columns(df_raw)
+            self._preprocess_raw_columns()
+            self._update_dynamic_columns()
         return self
 
 
-    def limit_train_orders(self, n_most_recent=None):
+    def load_from_gdrive(self, path_dir='.'):
         """
-        For each user drop orders except n most recent ones.
-
-        n_most_recent: None or int
-            Number of the most recent orders in user's history to keep. If None
-            keep all orders (no-op).
+        Download files `transactions.csv` and `products.csv` from gdrive
+        using url or id to current path or given directory.
         """
-        if n_most_recent is not None:
-            self.df = self.df[self.df.iord < n_most_recent]
-        return self
-
-
-    def __repr__(self):
-        class_name = self.__class__.__name__
-        df_shape = None if self.df is None else self.df.shape
-        return f'<{class_name} df={df_shape}>'
-
+        download_from_info(TRANSACTIONS_DOWNLOAD_INFO, path_dir,
+            self.show_progress)
