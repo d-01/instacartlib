@@ -12,7 +12,17 @@ import pandas as pd
 
 
 class DataFrameFileCache:
-
+    """
+    path: str or pathlib.Path
+        If the file exists read DataFrame from this file instead of 
+        calling the wrapped function.
+        If the file doesn't exist call wrapped function and write the output 
+        DataFrame to this file.
+    disable: {False, True}
+        If False wrapper has no effect (pass-through).
+    verbose: int
+        If verbose > 0 print additional information.
+    """
     def __init__(self, path, disable=False, verbose=0):
         self.path = Path(path).resolve()
         self.disable = disable
