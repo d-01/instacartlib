@@ -20,6 +20,15 @@ def test_Transactions_from_dir(test_data_dir):
     assert type(ds.df) == pd.DataFrame
 
 
+def test_Transactions_iord_column(transactions):
+    orders = transactions.df.drop_duplicates('oid')
+    user_1_last_3_orders = orders[orders.uid == 1][-3:]
+    assert user_1_last_3_orders.iord.to_list() == [2, 1, 0]
+
+    user_2_last_3_orders = orders[orders.uid == 2][-3:]
+    assert user_2_last_3_orders.iord.to_list() == [2, 1, 0]
+
+
 def test_Transactions_repr(transactions):
     transactions_empty = Transactions()
     expected_1 = '<Transactions df=None>'

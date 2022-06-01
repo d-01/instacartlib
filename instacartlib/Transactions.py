@@ -11,8 +11,6 @@ Capabilities (planned):
 * Generate train/test datasets for classification model
 """
 
-# todo: recalculate order number method
-
 from .utils import download_from_info
 from .utils import dummy_contextmanager
 from .utils import timer_contextmanager
@@ -107,7 +105,7 @@ def check_df_raw(df_raw):
                          'increasing order per order_id.')
 
 
-def get_iord(df, start_count=0):
+def _new_iord(df, start_count=0):
     """
     Input (table, DataFrame):
         Order A, User 1
@@ -131,12 +129,12 @@ def get_iord(df, start_count=0):
         - oid - order id
         - uid - user id
     start_count: int
-        Lowest index.
+        Lowest index to start from.
     
     Return:
     -------
     iord: Series
-        oid -> iord
+        oid (index), iord
     """
     orders = df.drop_duplicates('oid').set_index('oid')
     orders_reverse_index = (orders.groupby('uid')
@@ -145,7 +143,7 @@ def get_iord(df, start_count=0):
     return orders_reverse_index + start_count
 
 
-def update_iord(df, start_count=0):
+def _update_iord(df, start_count=0):
     """
     Update `iord` column.
     - iord - order (basket) index in reverse temporal order
@@ -163,21 +161,21 @@ def update_iord(df, start_count=0):
         - uid - user id
         - iord - order number (optional)
     start_count: int
-        Lowest index.
+        Lowest index to start from.
 
     Return:
     -------
     updated_df: DataFrame
         Input DataFrame with `iord` column reassigned.
     """
-    iord = get_iord(df, start_count=start_count)
+    iord = _new_iord(df, start_count=start_count)
     if 'iord' in df.columns:
         iord = iord.astype(df.iord.dtype)
     iord_updated = df.oid.map(iord)
     return df.assign(iord=iord_updated)
 
 
-def preprocess_raw_columns(df_raw):
+def _preprocess_raw_columns(df_raw):
     """
     df_raw: DataFrame
         Columns (9): order_id, user_id, order_number, order_dow,
@@ -240,7 +238,7 @@ class Transactions:
 
 
     def _preprocess_raw_columns(self):
-        self.df = preprocess_raw_columns(self.df)
+        self.df = _preprocess_raw_columns(self.df)
 
 
     def _timer(self, message):
@@ -251,7 +249,7 @@ class Transactions:
 
 
     def _update_iord(self):
-        self.df = update_iord(self.df, start_count=self.iord_start_count)
+        self.df = _update_iord(self.df, start_count=self.iord_start_count)
 
 
     def drop_last_orders(self, n):

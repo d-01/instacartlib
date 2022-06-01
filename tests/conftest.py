@@ -1,6 +1,6 @@
 
 from instacartlib.Transactions import read_transactions_csv
-from instacartlib.Transactions import preprocess_raw_columns as trns_preprocess
+from instacartlib.Transactions import _preprocess_raw_columns as trns_preprocess
 
 from instacartlib.Products import read_products_csv
 from instacartlib.Products import preprocess_raw_columns as prods_preprocess

@@ -1,10 +1,10 @@
 
 from instacartlib.Transactions import read_transactions_csv
-from instacartlib.Transactions import preprocess_raw_columns
+from instacartlib.Transactions import _preprocess_raw_columns
 from instacartlib.Transactions import check_df_raw
 from instacartlib.Transactions import get_transactions_csv_path
-from instacartlib.Transactions import get_iord
-from instacartlib.Transactions import update_iord
+from instacartlib.Transactions import _new_iord
+from instacartlib.Transactions import _update_iord
 
 import pytest
 import numpy as np
@@ -71,7 +71,7 @@ def test_df_trns_col_types(df_trns, expected_col_types):
 
 
 def test_preprocess_raw_columns(df_trns_raw):
-    output = preprocess_raw_columns(df_trns_raw)
+    output = _preprocess_raw_columns(df_trns_raw)
     assert type(output) == pd.DataFrame
     assert output.shape == (1468, 9)
 
@@ -84,7 +84,7 @@ def test_get_transactions_csv_path(test_data_dir):
         get_transactions_csv_path('__NON-EXISTENT_PATH__')
 
 
-def test_get_iord():
+def test_new_iord():
     test_input = pd.DataFrame([
         ['ord_D', 'user1', 3],
         ['ord_D', 'user1', 3],
@@ -96,7 +96,7 @@ def test_get_iord():
         ['ord_B', 'user2', 2],
     ], columns=['oid', 'uid', 'iord'])
 
-    test_output = get_iord(test_input)
+    test_output = _new_iord(test_input)
 
     expected = pd.Series({
         'ord_D': 1,
@@ -119,7 +119,7 @@ def test_update_iord():
         ['ord_B', 'user2', 2],
     ], columns=['oid', 'uid', 'iord'])
 
-    test_output = update_iord(test_input, start_count=1)
+    test_output = _update_iord(test_input, start_count=1)
 
     expected = pd.DataFrame([
         ['ord_D', 'user1', 2],
