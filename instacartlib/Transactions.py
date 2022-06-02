@@ -186,7 +186,7 @@ def _preprocess_raw_columns(df_raw):
     -------
     df: DataFrame
         Columns (9): oid, uid, iord, iid, reord, dow, hour, days_prev,
-            in_cart_ord
+            cart_pos
     """
     df = pd.DataFrame({
         'oid'         : df_raw.order_id,
@@ -197,7 +197,7 @@ def _preprocess_raw_columns(df_raw):
         'dow'         : df_raw.order_dow,
         'hour'        : df_raw.order_hour_of_day,
         'days_prev'   : df_raw.days_since_prior_order.fillna(-1).astype('int8'),
-        'in_cart_ord' : df_raw.add_to_cart_order,
+        'cart_pos'    : df_raw.add_to_cart_order,
     })
     return df
 
@@ -219,7 +219,7 @@ class Transactions:
     - hour - hour of day (0-23)
     - days_prev - number of days passed since previous order (-1 = unknown
       value for the initial order)
-    - in_cart_ord - add to cart order (1-based)
+    - cart_pos - add to cart order (1-based)
 
     show_progress: {False, True}
         Print messages with progress information for long operations.

@@ -37,7 +37,7 @@ def expected_col_types():
         'dow': np.dtype('uint8'),
         'hour': np.dtype('uint8'),
         'days_prev': np.dtype('int8'),
-        'in_cart_ord': np.dtype('uint8'),
+        'cart_pos': np.dtype('uint8'),
     }
 
 
