@@ -15,6 +15,36 @@ class GdownCachedDownloadIsCalled(Exception):
 
 
 @pytest.fixture
+def has_been_called():
+    """ Usage example:
+    ```python
+    # Scenario A
+    has_been_called().call()  # without id
+    has_been_called().call()  # without id
+    assert has_been_called().times == 2
+
+    # Scenario B
+    has_been_called(id='method_A').call()
+    has_been_called(id='method_B').call()
+    assert has_been_called('method_A').times == 1
+    assert has_been_called('method_B').times == 1
+    assert has_been_called.total == 2  # no unexpected calls have been made
+    ```
+    """
+    class CallCounter:
+        total = 0
+        counters = {}  # global storage for counters with id specified
+        def __init__(self, id=None):
+            self.id = id
+            self.counters[id] = self.counters.get(id, 0)
+            self.times = self.counters[id]
+        def call(self):
+            CallCounter.total += 1
+            self.counters[self.id] += 1
+    return CallCounter
+
+
+@pytest.fixture
 def test_data_dir():
     return pathlib.Path(r'tests/testing_data')
 
