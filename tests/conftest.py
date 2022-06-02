@@ -82,6 +82,12 @@ def df_trns(df_trns_raw):
 
 
 @pytest.fixture
+def ui_index(df_trns):
+    ui = df_trns.drop_duplicates(['uid', 'iid']).set_index(['uid', 'iid'])
+    return ui.index
+
+
+@pytest.fixture
 def uids(df_trns):
     return df_trns.uid.unique()
 

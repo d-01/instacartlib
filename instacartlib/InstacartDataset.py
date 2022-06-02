@@ -53,8 +53,9 @@ Capabilities (planned):
 
 from .Transactions import Transactions
 from .Products import Products
+from .feature_extractors import exports as feature_extractors
 from .utils import get_df_info
-from .plugins import plugins
+
 
 import numpy as np
 import pandas as pd

@@ -1,5 +1,5 @@
 
-def freq(df_trns):
+def freq(index, df_trns, df_prod):
     """ Number of times user A purchaised item B.
              freq
     uid iid      
@@ -10,7 +10,12 @@ def freq(df_trns):
         24      2
         35      1
     """
-    return df_trns.groupby(['uid', 'iid'], sort=False).size().to_frame('freq')
+    return (df_trns
+        .groupby(['uid', 'iid'], sort=False)
+        .size()
+        .to_frame('freq')
+        .reindex(index, fill_value=0)
+    )
 
 
 exports = [freq]

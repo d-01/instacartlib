@@ -3,7 +3,7 @@ from importlib import import_module as _import_module
 
 _pwd = __path__[0]
 
-plugins = {}
+exports = {}
 
 for _path in _Path(_pwd).iterdir():
     if (_path.is_dir() or
@@ -25,5 +25,5 @@ for _path in _Path(_pwd).iterdir():
     
     for _obj in _module_exports:
         _export_name = f'{_path.stem}.{_obj.__name__}'
-        plugins[_export_name] = _obj
+        exports[_export_name] = _obj
     

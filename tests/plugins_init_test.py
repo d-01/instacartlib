@@ -10,7 +10,7 @@ import pytest
 # depend on it.
 @pytest.fixture(scope='session')
 def plugins():
-    src = 'instacartlib/plugins/__init__.py'
+    src = 'instacartlib/feature_extractors/__init__.py'
     dst = 'tests/plugins/__init__.py'
 
     if not (os.path.exists(dst) and filecmp.cmp(src, dst)):
@@ -21,9 +21,9 @@ def plugins():
     
 
 def test_plugins_module(plugins):
-    assert hasattr(plugins, 'plugins')
-    assert type(plugins.plugins) == dict
-    assert set(plugins.plugins.keys()) == {
+    assert hasattr(plugins, 'exports')
+    assert type(plugins.exports) == dict
+    assert set(plugins.exports.keys()) == {
         '000_test_plugin.function_A',
         '000_test_plugin.function_B',
         '000_test_plugin.ClassA',

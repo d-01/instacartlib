@@ -1,5 +1,5 @@
 
-def avg_cart_pos(df_trns):
+def avg_cart_pos(index, df_trns, df_prod):
     """ Position of item B in user's A cart on average.
              avg_cart_pos
     uid iid              
@@ -10,8 +10,12 @@ def avg_cart_pos(df_trns):
         24       9.000000
         35      11.000000
     """
-    return (df_trns.groupby(['uid', 'iid'], sort=False).in_cart_ord.mean()
-        .to_frame('avg_cart_pos'))
+    return (df_trns
+        .groupby(['uid', 'iid'], sort=False)
+        .cart_pos.mean()
+        .to_frame('avg_cart_pos')
+        .reindex(index, fill_value=999)
+    )
 
 
 exports = [avg_cart_pos]
