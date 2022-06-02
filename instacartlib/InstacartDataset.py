@@ -1,40 +1,60 @@
 """
 Main API to manage dataset generation process.
 
+Generation process: extract features from transactions and products dataframes, 
+and cache them to files.
+
+
+Types of features:
+1. UI - user-item features (interactions). Indexed by (uid, iid) pairs.
+   * Example: `User A` has purchased `Item B` N times.
+2. U - user features, not related to particular item. Indexed by (uid).
+   * Example: `User A` has N orders total.
+3. I - item features, not related to particular user. Indexed by (iid).
+   * Example: `Item B` purchased by % users at least once.
+
+
 API draft:
 ```
-from instacartlib import InstacartDataset
+import instacartlib.UserItemDataset as UserItemDataset
+import extractors
 
-inst = InstacartDataset(**config)
+ds = UserItemDataset(cache_dir='./cached_features', verbose=1, **config)
 
-inst.download(to_dir='abc')
-inst.read_dir('abc')
-inst.info()
+ds.download(to_dir='abc')
+ds.read_dir('abc')
+ds.info()
 
-inst.make_features([...], cache='path to dir or None')
-inst.add_negative_samples()  # how many
+ds.register_feature_extractors({
+    **extractors,
+    'custom_feature': extractor_function,
+})
 
-(train, val) = inst.get_dataset(val_split=0.2)
+ds.extract([...])  # long
+ds.add_negative_samples()  # how many
+
+(train, val) = ds.get_dataset(val_split=0.2)
 x_train, y_train = train[:, -1:], train[:, -1]
 x_val, y_val = val[:, -1:], val[:, -1]
-
-inst.make_features([...], cache='path to dir or None')
-x = inst.get_dataset()
 ```
 
 Capabilities:
-1. Download csv files with raw data.
-1. Load raw data and preprocess.
+* Download csv files with raw data.
+* Load raw data and preprocess.
+* Register feature extractors.
 
 Capabilities (planned):
-1. Generate (and cache) features for classification task.
-1. Make train dataset.
-1. Make test dataset.
+* Generate (and cache) features for classification task.
+* Combine dataset from extracted features.
+* Make train dataset.
+* Make test dataset.
+* (maybe) Manage common and specific parameters (settings) for feature extractors.
 """
 
 from .Transactions import Transactions
 from .Products import Products
 from .utils import get_df_info
+from .plugins import plugins
 
 import numpy as np
 import pandas as pd
@@ -64,9 +84,10 @@ class InstacartDataset:
 
         self.df_trns = None
         self.df_prod = None
-        self.dataset = None
+        self.df_ui = None
+        self.ui_index = None
 
-        self._feature_manager = None
+        self._feature_extractors = {}
 
 
     def download(self, to_dir='instacart_temp/raw_data'):
@@ -82,6 +103,17 @@ class InstacartDataset:
         self._products.from_dir(path_dir=path_dir, reduced=reduced)
         self.df_prod = self._products.df
 
+        self._assert_df_ui_initialized()
+        return self
+
+
+    def register_feature_extractors(self, feature_extractors: dict):
+        already_exist = (
+            set(self._feature_extractors) & set(feature_extractors))
+        if len(already_exist) > 0:
+            raise ValueError(
+                f"Feature extractors already registered: {already_exist}.")
+        self._feature_extractors.update(feature_extractors)
         return self
 
 
@@ -94,13 +126,13 @@ class InstacartDataset:
                 '`read_dir` to load).')
 
 
-    def _assert_dataset_initialized(self):
+    def _assert_df_ui_initialized(self):
         self._assert_dataframes_initialized()
-        if self.dataset is None:
-            ui_index = (self.df_trns
-                .set_index(['uid', 'iid']).index
-                .drop_duplicates())
-            self.dataset = pd.DataFrame(index=ui_index)
+        if self.df_ui is None:
+            self.ui_index = (self.df_trns
+                .set_index(['uid', 'iid'])
+                .index.drop_duplicates())
+            self.df_ui = pd.DataFrame(index=self.ui_index)
 
 
     def info(self):
@@ -111,7 +143,5 @@ class InstacartDataset:
             df_prod_info=get_df_info(self.df_prod),
         ))
         return self
-
-
 
 
