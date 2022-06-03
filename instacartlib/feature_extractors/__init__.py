@@ -5,13 +5,13 @@ _pwd = __path__[0]
 
 exports = {}
 
-for _path in _Path(_pwd).iterdir():
+for _path in sorted(_Path(_pwd).iterdir()):
     if (_path.is_dir() or
         _path.suffix != '.py' or
         _path.name in ['__init__.py']
     ):
         continue
-
+    
     _module = _import_module(f'.{_path.stem}', package=__name__)
     if not hasattr(_module, 'exports'):
         raise AttributeError(
