@@ -65,7 +65,7 @@ def ui_index_1():
         user_B  item_E
     ''')).set_index(['uid', 'iid']).index
 
-@pytest.mark.nondestructive
+
 @pytest.mark.parametrize("extractor_name", feature_extractors)
 def test_feature_extractors_output_valid(extractor_name,
         ui_index_1, df_trns_1, df_prod_1):

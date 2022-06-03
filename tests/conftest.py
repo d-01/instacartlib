@@ -5,10 +5,15 @@ from instacartlib.Transactions import _preprocess_raw_columns as trns_preprocess
 from instacartlib.Products import read_products_csv
 from instacartlib.Products import preprocess_raw_columns as prods_preprocess
 
+import datetime
+import random
+import shutil
 import pathlib
 
 import pytest
 
+
+CLEANUP_TEMP_DIR = False
 
 class GdownCachedDownloadIsCalled(Exception):
     pass
@@ -60,6 +65,17 @@ def fake_gdown_cached_download(monkeypatch):
     monkeypatch.setattr('gdown.cached_download', ff)
 
 
+@pytest.fixture
+def tmp_dir(tmp_path):
+    datetime_8_6_6 = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+    random_8 = random.randint(0, 0xffff_ffff)
+    path = tmp_path / f'{datetime_8_6_6}_{random_8:X}'
+    path.mkdir()
+    yield path
+    if CLEANUP_TEMP_DIR:
+        shutil.rmtree(path)
+
+
 ################################################################################
 # Transactions
 ################################################################################
@@ -102,7 +118,7 @@ def iids(df_trns):
 
 @pytest.fixture
 def products_csv_path(test_data_dir):
-    file_path = test_data_dir / 'products.csv.zip'
+    file_path = test_data_dir / 'products.csv'
     assert file_path.exists()
     return file_path
 

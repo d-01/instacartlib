@@ -1,14 +1,8 @@
 from instacartlib.DataFrameFileCache import DataFrameFileCache
 
-import datetime
-import random
-import shutil
-
 import pandas as pd
 
 import pytest
-
-CLEANUP_TEMP_DIR = False
 
 
 @pytest.fixture
@@ -27,17 +21,6 @@ def call_counter():
         this.count += 1
     this.count = 0
     return this
-
-
-@pytest.fixture
-def tmp_dir(tmp_path):
-    datetime_8_6_6 = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-    random_8 = random.randint(0, 0xffff_ffff)
-    path = tmp_path / f'{datetime_8_6_6}_{random_8:X}'
-    path.mkdir()
-    yield path
-    if CLEANUP_TEMP_DIR:
-        shutil.rmtree(path)
 
 
 def test_cache_disable_default(tmp_dir, call_counter, df):
