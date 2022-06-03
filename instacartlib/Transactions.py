@@ -11,6 +11,7 @@ Capabilities (planned):
 * Generate train/test datasets for classification model
 """
 
+from plistlib import InvalidFileException
 from .utils import download_from_info
 from .utils import dummy_contextmanager
 from .utils import timer_contextmanager
@@ -32,6 +33,10 @@ class TRANSACTIONS_DOWNLOAD_INFO:
     GDRIVE_ID = "1-2cq6ZrBd57o_m6ixdWYhUbRHL3z43N1"
 
 
+class InvalidTransactionsData(ValueError):
+    """ Transactions table missing required columns. """
+
+
 def get_transactions_csv_path(path_dir):
         for filename in [TRANSACTIONS_FILENAME, TRANSACTIONS_ZIP_FILENAME]:
             path = Path(path_dir) / filename
@@ -45,12 +50,13 @@ def get_transactions_csv_path(path_dir):
             f'was not found at "{abs_path}".')
 
 
-def read_transactions_csv(csv_path, nrows=None):
+def read_transactions_csv(filepath_or_buffer, nrows=None):
     """
     Read `transactions.csv` file into DataFrame.
 
-    csv_path: str or pathlib.Path
-       Path to csv file (`*.csv`) or zipped csv file (`*.zip`).
+    filepath_or_buffer: str, pathlib.Path or buffer
+        Path to csv file (`*.csv`), zipped csv file (`*.zip`) or buffer with
+        csv-formatted string (io.StringIO).
     nrows: None or int
         Limit the number of rows to read from the file (header row not included).
     """
@@ -65,7 +71,12 @@ def read_transactions_csv(csv_path, nrows=None):
         "add_to_cart_order": np.uint8,  # 95
         "reordered": np.uint8,  # 0, 1
     }
-    df_raw = pd.read_csv(csv_path, dtype=dtype, nrows=nrows)
+    df_raw = pd.read_csv(filepath_or_buffer, dtype=dtype, nrows=nrows)
+    missing_columns = set(dtype.keys()) - set(df_raw.columns)
+    if missing_columns:
+        raise InvalidTransactionsData(
+            f'Missing columns in transaction table "{filepath_or_buffer}": '
+            f'{missing_columns}.')
     return df_raw
 
 

@@ -5,10 +5,13 @@ from instacartlib.Transactions import check_df_raw
 from instacartlib.Transactions import get_transactions_csv_path
 from instacartlib.Transactions import _new_iord
 from instacartlib.Transactions import _update_iord
+from instacartlib.Transactions import InvalidTransactionsData
 
-import pytest
+import io
 import numpy as np
 import pandas as pd
+
+import pytest
 
 
 @pytest.fixture
@@ -40,22 +43,42 @@ def expected_col_types():
         'cart_pos': np.dtype('uint8'),
     }
 
+TRANSACTIONS_CSV = """\
+order_id,user_id,order_number,order_dow,order_hour_of_day,days_since_prior_order,product_id,add_to_cart_order,reordered
+2539329,1,1,2,8,,196,1.0,0.0
+2539329,1,1,2,8,,14084,2.0,0.0
+2539329,1,1,2,8,,12427,3.0,0.0
+"""
 
-def test_read_transactions_csv_nrows(transactions_csv_path):
-    output = read_transactions_csv(transactions_csv_path, nrows=0)
-    assert type(output) == pd.DataFrame
-    assert output.shape == (0, 9)
+TRANSACTIONS_CSV_MISSING_COLUMN = """\
+order_id,user_id,order_number,order_dow,order_hour_of_day,days_since_prior_order,product_id,reordered
+2539329,1,1,2,8,,196,0.0
+2539329,1,1,2,8,,14084,0.0
+2539329,1,1,2,8,,12427,0.0
+"""
+
+def test_read_transactions_csv(transactions_csv_path, expected_raw_col_types):
+    output_1 = read_transactions_csv(transactions_csv_path)
+    assert type(output_1) == pd.DataFrame
+    assert output_1.shape == (1468, 9)
+    assert output_1.dtypes.to_dict() == expected_raw_col_types
+
+    output_2 = read_transactions_csv(transactions_csv_path, nrows=0)
+    assert type(output_2) == pd.DataFrame
+    assert output_2.shape == (0, 9)
+
+    output_3 = read_transactions_csv(io.StringIO(TRANSACTIONS_CSV))
+    assert type(output_3) == pd.DataFrame
+    assert output_3.shape == (3, 9)
 
     with pytest.raises(ValueError):
         read_transactions_csv(transactions_csv_path, nrows=-1)
 
+    with pytest.raises(FileNotFoundError):
+        read_transactions_csv('__NON_EXISTENT_FILE__')
 
-def test_read_transactions_csv_return_dataframe(df_trns_raw):
-    assert type(df_trns_raw) == pd.DataFrame
-
-
-def test_df_trns_raw_col_types(df_trns_raw, expected_raw_col_types):
-    assert df_trns_raw.dtypes.to_dict() == expected_raw_col_types
+    with pytest.raises(InvalidTransactionsData, match='add_to_cart_order'):
+        read_transactions_csv(io.StringIO(TRANSACTIONS_CSV_MISSING_COLUMN))
 
 
 def test_check_df_raw(df_trns_raw):

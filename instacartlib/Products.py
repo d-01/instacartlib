@@ -18,6 +18,10 @@ class PRODUCTS_DOWNLOAD_INFO:
     GDRIVE_ID = "130QJGLbv265WYgRtjXHm4FFY7QCMRXtv"
 
 
+class InvalidProductsData(ValueError):
+    """ Products table missing required columns. """
+
+
 def get_products_csv_path(path_dir):
         for filename in [PRODUCTS_FILENAME, PRODUCTS_ZIP_FILENAME]:
             path = Path(path_dir) / filename
@@ -31,19 +35,27 @@ def get_products_csv_path(path_dir):
             f'was not found at "{abs_path}".')
 
 
-def read_products_csv(csv_path):
+def read_products_csv(filepath_or_buffer):
     """
     Read `products.csv` file into DataFrame.
 
-    csv_path: str or pathlib.Path
-        Path to csv file (`*.csv`) or zipped csv file (`*.zip`).
+    filepath_or_buffer: str, pathlib.Path or buffer
+        Path to csv file (`*.csv`), zipped csv file (`*.zip`) or buffer with
+        csv-formatted string (io.StringIO).
     """
     dtype = {
         'product_id': np.uint32,
         'aisle_id': np.uint32,
         'department_id': np.uint32,
     }
-    df_raw = pd.read_csv(csv_path, dtype=dtype)
+    df_raw = pd.read_csv(filepath_or_buffer, dtype=dtype)
+
+    required_columns = ['product_id', 'product_name', 'aisle_id', 'department_id', 'aisle', 'department']
+    missing_columns = set(required_columns) - set(df_raw.columns)
+    if missing_columns:
+        raise InvalidProductsData(
+            f'Missing columns in products table "{filepath_or_buffer}": '
+            f'{missing_columns}.')
     return df_raw
 
 

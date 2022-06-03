@@ -8,3 +8,6 @@ __pycache__/
 *.egg
 
 todo.txt
+
+.coverage
+coverage.xml
