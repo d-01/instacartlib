@@ -11,7 +11,6 @@ Capabilities (planned):
 * Generate train/test datasets for classification model
 """
 
-from plistlib import InvalidFileException
 from .utils import download_from_info
 from .utils import dummy_contextmanager
 from .utils import timer_contextmanager
