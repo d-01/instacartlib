@@ -56,10 +56,11 @@ from .DataFrameFileCache import DataFrameFileCache
 from .Transactions import Transactions
 from .Products import Products
 from .feature_extractors import exports as feature_extractors
-from .utils import get_df_info, format_size
+from .utils import get_df_info, format_size, increment_counter_suffix
 
 from pathlib import Path
 
+import re
 import numpy as np
 import pandas as pd
 
@@ -97,11 +98,25 @@ def _assert_extractor_output(extractor_output, expected_index):
         raise ExtractorInvalidOutputError(e)
 
 
+def _make_unique_suffix(name: str, existing_names: set) -> str:
+    while name in existing_names:
+        name = increment_counter_suffix(name)
+    return name
+
+
 def _process_extractor_output(output, _feature_registry):
-    duplicated_features = set(_feature_registry) & set(output.columns)
-    if duplicated_features:
-        output = output.drop(columns=duplicated_features)
-    return (output, duplicated_features)
+    existing_names = set(_feature_registry)
+    duplicated_names = existing_names & set(output.columns)
+    if duplicated_names == set():
+        return (output, {})
+
+    old_new_names = {
+        old_name: _make_unique_suffix(old_name, existing_names)
+        for old_name
+        in duplicated_names
+    }
+    output = output.rename(columns=old_new_names)
+    return (output, old_new_names)
 
 
 def _get_feature_cache_path(features_cache_dir, name):
@@ -136,12 +151,12 @@ class InstacartDataset:
         self.register_feature_extractors(feature_extractors)
 
 
-    def _print(self, *args, indent=0, **kwargs):
+    def _print(self, message, indent=0):
         if self.verbose > 0:
             if indent > 0:
                 pad = ' ' * indent
-                args = [str(arg).replace('\n', '\n' + pad) for arg in args]
-            print(*args, **kwargs)
+                message = pad + message.replace('\n', '\n' + pad)
+            print(message)
 
 
     def download(self, to_dir='instacart_temp/raw_data'):
@@ -219,22 +234,24 @@ class InstacartDataset:
                 self._print(e, indent=2)
                 continue
 
-            self._print(f'Extracted features: {list(output.columns)}', indent=2)
+            self._print(f'Extracted features: {list(output.columns)}',
+                indent=2)
 
-            output, duplicated_features = (
+            output, old_new_names_dict = (
                 _process_extractor_output(output, self._feature_registry))
-            self._warn_duplicated_features(duplicated_features)
+            self._warn_renamed_features(old_new_names_dict)
             self._add_features_to_registry(extractor_name, output.columns)
 
             self.df_ui = self.df_ui.join(output)
         return self
 
 
-    def _warn_duplicated_features(self, feature_names):
-        for feature_name in feature_names:
+    def _warn_renamed_features(self, old_new_names_dict):
+        for old_name, new_name in old_new_names_dict.items():
             self._print(
-                f'"{feature_name}" has been already extracted using '
-                f'"{self._feature_registry[feature_name]}"',
+                f'Feature has been renamed "{old_name}" -> "{new_name}", '
+                f'because it has been already extracted by extractor '
+                f'"{self._feature_registry[old_name]}".',
                 indent=2)
 
 

@@ -17,10 +17,12 @@ for _path in sorted(_Path(_pwd).iterdir()):
 
     try:
         _module = _import_module(f'.{_path.stem}', package=__name__)
-        if type(_module.exports) != dict:
+        if type(_module.exports) != dict: #pragma: no cover
+            # tested in `tests/plugins/__init__.py` copy
             raise TypeError(f'"exports" attribute expected to be dictionary, '
                 f'got: {type(_module.exports)}')
-    except Exception as e:
+    except Exception as e: #pragma: no cover
+        # tested in `tests/plugins/__init__.py` copy
         _logger.warning(f'Failed to import ".{_path.stem}" from package '
             f'"{__name__}". Caused by exception: {e!r}')
         continue

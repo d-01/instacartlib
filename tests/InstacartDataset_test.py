@@ -39,7 +39,14 @@ def products_load_from_gdrive_patch(monkeypatch, has_been_called):
 def extractor_valid(has_been_called):
     def func(ui_index, df_trns, df_prod):
         has_been_called(id='extractor_valid').call()
-        return pd.DataFrame(index=ui_index).assign(feature=0)
+        return pd.DataFrame(index=ui_index).assign(feature_A=0)
+    return func
+
+
+@pytest.fixture
+def extractor_valid_duplicate():
+    def func(ui_index, df_trns, df_prod):
+        return pd.DataFrame(index=ui_index).assign(feature_A=1)
     return func
 
 
@@ -53,7 +60,7 @@ def extractor_broken():
 @pytest.fixture
 def extractor_invalid():
     def func(ui_index, df_trns, df_prod):
-        return pd.DataFrame(index=[1, 2, 3]).assign(feature=0)
+        return pd.DataFrame(index=[1, 2, 3]).assign(feature_B=0)
     return func
 
 
@@ -86,10 +93,10 @@ def test_process_extractor_output():
     extractor_output = pd.DataFrame(columns=list('abc'))
     feature_registry = {'c': 'extr1'}
 
-    (output, duplicated) = _process_extractor_output(extractor_output,
+    output, old_new_name_dict = _process_extractor_output(extractor_output,
         feature_registry)
-    assert duplicated == {'c'}
-    assert set(output.columns) == {'a', 'b'}
+    assert output.columns.to_list() == ['a', 'b', 'c_1']
+    assert old_new_name_dict == {'c': 'c_1'}
 
 
 def test_get_feature_cache_path():
@@ -129,50 +136,68 @@ def test_InstacartDataset_usage_no_cache(test_data_dir, extractor_valid,
     inst.extract_features()
     assert len(inst.df_ui.columns) == 0
 
-    inst.register_feature_extractors({"extractor1": extractor_valid})
-    assert 'extractor1' in inst._feature_extractors
+    inst.register_feature_extractors({"extractor_1": extractor_valid})
+    assert 'extractor_1' in inst._feature_extractors
 
     with pytest.raises(ExtractorExistsError):
-        inst.register_feature_extractors({"extractor1": 'any'})
+        inst.register_feature_extractors({"extractor_1": 'any'})
 
     assert inst._feature_registry == {}
 
     assert has_been_called(id='extractor_valid').times == 0
     inst.extract_features()
     assert has_been_called(id='extractor_valid').times == 1
-    assert inst._feature_registry == {'feature': 'extractor1'}
-    assert inst.df_ui.columns.to_list() == ['feature']
+    assert inst._feature_registry == {'feature_A': 'extractor_1'}
+    assert inst.df_ui.columns.to_list() == ['feature_A']
     inst.extract_features()
     assert has_been_called(id='extractor_valid').times == 2
+    assert inst._feature_registry == {
+        'feature_A': 'extractor_1',
+        'feature_A_1': 'extractor_1',
+    }
+    assert inst.df_ui.columns.to_list() == ['feature_A', 'feature_A_1']
 
 
 def test_InstacartDataset_usage_with_cache(test_data_dir, tmp_dir,
         extractor_valid, extractor_invalid, extractor_broken,
-        has_been_called):
+        extractor_valid_duplicate, has_been_called):
     inst = InstacartDataset(features_cache_dir=tmp_dir)
     inst.read_dir(test_data_dir)
     inst._feature_extractors = {}
 
     inst.register_feature_extractors({
-        "extractor1": extractor_valid,
-        "extractor2": extractor_invalid,
-        "extractor3": extractor_broken,
+        "extractor_1": extractor_valid,
+        "extractor_2": extractor_invalid,
+        "extractor_3": extractor_broken,
+        "extractor_4": extractor_valid_duplicate,
     })
-    assert (set(inst._feature_extractors) == {"extractor1", "extractor2",
-        "extractor3"})
+    assert (set(inst._feature_extractors) == {"extractor_1", "extractor_2",
+        "extractor_3", "extractor_4"})
     assert inst._feature_registry == {}
     assert inst.df_ui.columns.to_list() == []
 
     assert has_been_called(id='extractor_valid').times == 0
     inst.extract_features()
     assert has_been_called(id='extractor_valid').times == 1
-    assert (tmp_dir / 'extractor1.zip').exists()
-    assert (tmp_dir / 'extractor2.zip').exists()
-    assert (tmp_dir / 'extractor3.zip').exists() == False
-    assert inst._feature_registry == {'feature': 'extractor1'}
-    assert inst.df_ui.columns.to_list() == ['feature']
+    assert (tmp_dir / 'extractor_1.zip').exists()
+    assert (tmp_dir / 'extractor_2.zip').exists()
+    assert (tmp_dir / 'extractor_3.zip').exists() == False
+    assert (tmp_dir / 'extractor_4.zip').exists()
+    assert inst._feature_registry == {
+        'feature_A': 'extractor_1',
+        'feature_A_1': 'extractor_4',
+    }
+    assert inst.df_ui.columns.to_list() == ['feature_A', 'feature_A_1']
     inst.extract_features()
     assert has_been_called(id='extractor_valid').times == 1
+    assert inst._feature_registry == {
+        'feature_A': 'extractor_1',
+        'feature_A_1': 'extractor_4',
+        'feature_A_2': 'extractor_1',
+        'feature_A_3': 'extractor_4',
+    }
+    assert inst.df_ui.columns.to_list() == ['feature_A', 'feature_A_1',
+        'feature_A_2', 'feature_A_3']
 
 
 def test_InstacartDataset_repr():
@@ -183,7 +208,7 @@ def test_InstacartDataset_repr():
     assert 'features=' in InstacartDataset_repr
 
 
-def test_InstacartDataset_info(capsys, test_data_dir):
+def test_InstacartDataset_info(capsys):
     inst = InstacartDataset()
     capsys.readouterr()
     with warnings.catch_warnings():

@@ -40,7 +40,7 @@ def format_size(size_bytes):
     size_mb = round(size_kb / 1024)
     if size_mb < 1000:
         return f'{size_mb} MB'
-        
+
     size_gb = round(size_mb / 1024)
     return f'{size_gb} GB'
 
@@ -50,3 +50,18 @@ def get_df_info(df):
     return (f'<{type(df).__name__} '
             f'shape={df.shape} '
             f'memory={format_size(memory_usage)}>')
+
+
+def split_counter_suffix(string, sep='_'):
+    parts = string.rsplit(sep, maxsplit=1)
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts
+    return [string, None]
+
+
+def increment_counter_suffix(string, sep='_'):
+    (base, counter_str) = split_counter_suffix(string, sep=sep)
+    if counter_str is None:
+        counter_str = '0'
+    counter_incremented_str = str(int(counter_str) + 1)
+    return f'{base}{sep}{counter_incremented_str.zfill(len(counter_str))}'
