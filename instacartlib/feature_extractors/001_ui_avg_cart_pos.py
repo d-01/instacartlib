@@ -2,7 +2,7 @@
 def avg_cart_pos(index, df_trns, df_prod):
     """ Position of item B in user's A cart on average.
              avg_cart_pos
-    uid iid              
+    uid iid
     0   0        2.333333
         2        5.333333
         5        4.666667
@@ -18,4 +18,4 @@ def avg_cart_pos(index, df_trns, df_prod):
     )
 
 
-exports = [avg_cart_pos]
+exports = {'avg_cart_pos': avg_cart_pos}

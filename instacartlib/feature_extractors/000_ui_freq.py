@@ -2,7 +2,7 @@
 def freq(index, df_trns, df_prod):
     """ Number of times user A purchaised item B.
              freq
-    uid iid      
+    uid iid
     0   0       3
         7       1
         14      2
@@ -18,4 +18,4 @@ def freq(index, df_trns, df_prod):
     )
 
 
-exports = [freq]
+exports = {'freq': freq}

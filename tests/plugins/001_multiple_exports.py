@@ -10,4 +10,8 @@ class ClassA:
     pass
 
 
-exports = [function_A, function_B, ClassA]
+exports = {
+    'function_A': function_A,
+    'function_B': function_B,
+    'ClassA': ClassA,
+}
