@@ -30,16 +30,6 @@ item_E        2         4  dept B  aisle D  product name
 
 
 @pytest.fixture
-def fxtr_freq():
-    return feature_extractors['000_ui_freq.freq']
-
-
-@pytest.fixture
-def fxtr_avg_cart_pos():
-    return feature_extractors['001_ui_avg_cart_pos.avg_cart_pos']
-
-
-@pytest.fixture
 def df_trns_1():
     return pd.read_fwf(io.StringIO(TRANSACTIONS_CSV))
 
@@ -66,7 +56,7 @@ def ui_index_1():
     ''')).set_index(['uid', 'iid']).index
 
 
-@pytest.mark.parametrize("extractor_name", feature_extractors)
+@pytest.mark.parametrize("extractor_name", feature_extractors.keys())
 def test_feature_extractors_output_valid(extractor_name,
         ui_index_1, df_trns_1, df_prod_1):
     function = feature_extractors[extractor_name]
@@ -75,16 +65,28 @@ def test_feature_extractors_output_valid(extractor_name,
     assert test_output.isna().values.sum() == 0
 
 
-def test_ui_freq(fxtr_freq, ui_index, df_trns, uids, iids):
-    test_output = fxtr_freq(ui_index, df_trns, None)
+@pytest.mark.skipif(
+    '000_ui_freq.freq' not in feature_extractors,
+    reason="feature extractor was not registered",
+)
+def test_ui_freq(ui_index, df_trns, uids, iids):
+    freq = feature_extractors['000_ui_freq.freq']
+
+    test_output = freq(ui_index, df_trns, None)
     assert type(test_output) == pd.DataFrame
     assert test_output.columns == ['freq']
     assert (test_output.freq.loc[uids[0], iids[[0, 1, 2]]].to_list()
         == [10, 1, 10])
 
 
-def test_ui_freq__1(fxtr_freq, ui_index_1, df_trns_1):
-    test_output = fxtr_freq(ui_index_1, df_trns_1, None)
+@pytest.mark.skipif(
+    '000_ui_freq.freq' not in feature_extractors,
+    reason="feature extractor was not registered",
+)
+def test_ui_freq__1(ui_index_1, df_trns_1):
+    freq = feature_extractors['000_ui_freq.freq']
+
+    test_output = freq(ui_index_1, df_trns_1, None)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  freq
         user_A  item_A     2
@@ -101,16 +103,28 @@ def test_ui_freq__1(fxtr_freq, ui_index_1, df_trns_1):
     pd.testing.assert_frame_equal(test_output, expected)
 
 
-def test_avg_cart_pos(fxtr_avg_cart_pos, ui_index, df_trns, uids, iids):
-    out = fxtr_avg_cart_pos(ui_index, df_trns, None)
+@pytest.mark.skipif(
+    '001_ui_avg_cart_pos.avg_cart_pos' not in feature_extractors,
+    reason="feature extractor was not registered",
+)
+def test_avg_cart_pos(ui_index, df_trns, uids, iids):
+    avg_cart_pos = feature_extractors['001_ui_avg_cart_pos.avg_cart_pos']
+
+    out = avg_cart_pos(ui_index, df_trns, None)
     assert type(out) == pd.DataFrame
     assert 'avg_cart_pos' in out.columns
-    assert (out['avg_cart_pos'].loc[uids[0], iids[[0, 1, 2]]].to_list() 
+    assert (out['avg_cart_pos'].loc[uids[0], iids[[0, 1, 2]]].to_list()
         == [1.4, 2.0, 3.3])
 
 
-def test_avg_cart_pos__1(fxtr_avg_cart_pos, ui_index_1, df_trns_1, df_prod_1):
-    test_output = fxtr_avg_cart_pos(ui_index_1, df_trns_1, df_prod_1)
+@pytest.mark.skipif(
+    '001_ui_avg_cart_pos.avg_cart_pos' not in feature_extractors,
+    reason="feature extractor was not registered",
+)
+def test_avg_cart_pos__1(ui_index_1, df_trns_1, df_prod_1):
+    avg_cart_pos = feature_extractors['001_ui_avg_cart_pos.avg_cart_pos']
+
+    test_output = avg_cart_pos(ui_index_1, df_trns_1, df_prod_1)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  avg_cart_pos
         user_A  item_A           1.5
