@@ -1,1 +1,2 @@
 from .InstacartDataset import InstacartDataset
+from .FeaturesDataset import FeaturesDataset
