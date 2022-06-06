@@ -29,7 +29,7 @@ def expected_col_types():
         'aisle_id': np.dtype('uint32'),
         'dept': np.dtype('object'),
         'aisle': np.dtype('object'),
-        'product': np.dtype('object'),
+        'prod': np.dtype('object'),
     }
 
 

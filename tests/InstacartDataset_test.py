@@ -64,7 +64,7 @@ def test_InstacartDataset_train_default_usage(test_data_dir):
     assert (df_orders_uid_1.iord.to_list() == [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
     assert icds.df_prod.shape == (577, 6)
     assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
-        'dept', 'aisle', 'product']
+        'dept', 'aisle', 'prod']
     assert icds.get_dataframes() == {
         'df_trns': icds.df_trns,
         'df_prod': icds.df_prod,
@@ -105,7 +105,7 @@ def test_InstacartDataset_train_true(test_data_dir):
     assert (df_orders_uid_1.iord.to_list() == [8, 7, 6, 5, 4, 3, 2, 1, 0])
     assert icds.df_prod.shape == (577, 6)
     assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
-        'dept', 'aisle', 'product']
+        'dept', 'aisle', 'prod']
     assert icds.df_trns_target.shape == (90, 9)
     assert icds.df_trns_target.columns.to_list() == ['oid', 'uid', 'iord',
         'iid', 'reord', 'dow', 'hour', 'days_prev', 'cart_pos']

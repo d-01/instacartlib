@@ -69,7 +69,7 @@ def preprocess_raw_columns(df_raw):
     Return:
     -------
     df: DataFrame
-        Columns (6): iid, dept_id, aisle_id, dept, aisle, product
+        Columns (6): iid, dept_id, aisle_id, dept, aisle, prod
     """
     df = pd.DataFrame({
         'iid': df_raw.product_id,
@@ -77,7 +77,7 @@ def preprocess_raw_columns(df_raw):
         'aisle_id': df_raw.aisle_id,
         'dept': df_raw.department,
         'aisle': df_raw.aisle,
-        'product': df_raw.product_name,
+        'prod': df_raw.product_name,
     })
     return df
 
@@ -92,7 +92,7 @@ class Products:
     - aisle_id - aisle id (raw)
     - dept - department name
     - aisle - aisle name
-    - product - product name
+    - prod - product name
 
     show_progress: {False, True}
         No op. Left for consistency with Transactions API.
@@ -127,8 +127,8 @@ class Products:
 
         path_dir: str or pathlib.Path
             Path to directory with `transactions.csv` or `transactions.csv.zip` files.
-        show_progress: {False, True}
-            No op. Left for consistency with Transactions API.
+        reduced: {False, True}
+            API consistency with Transactions. No op.
         """
         products_csv_path = get_products_csv_path(path_dir)
         with self._timer(f'Reading "{products_csv_path.name}" ...'):
