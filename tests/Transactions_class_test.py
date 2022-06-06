@@ -1,12 +1,14 @@
 
+from unittest.mock import patch
 from instacartlib.Transactions import Transactions
 
 from .conftest import GdownCachedDownloadIsCalled
 
-import pytest
-
+import os
 import numpy as np
 import pandas as pd
+
+import pytest
 
 
 @pytest.fixture
@@ -51,9 +53,13 @@ def test_Transactions_show_progress(capsys, test_data_dir):
     assert outerr_2 == ('', '')
 
 
-def test_Transactions_load_from_gdrive(fake_gdown_cached_download):
-    with pytest.raises(GdownCachedDownloadIsCalled):
-        Transactions().load_from_gdrive('.')
+def test_Transactions_load_from_gdrive():
+    trns = Transactions()
+    with patch('gdown.cached_download') as mock_method:
+        assert trns.load_from_gdrive('abc') is trns
+    args, kwargs = mock_method.call_args
+    assert 'path' in kwargs
+    assert kwargs['path'] == os.path.join('abc', 'transactions.csv.zip')
 
 
 def test_Transactions_drop_last_orders_n_5(transactions):

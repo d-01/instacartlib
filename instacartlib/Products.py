@@ -117,6 +117,7 @@ class Products:
         """
         download_from_info(PRODUCTS_DOWNLOAD_INFO, path_dir,
             self.show_progress)
+        return self
 
 
     def from_dir(self, path_dir='.', reduced=False):

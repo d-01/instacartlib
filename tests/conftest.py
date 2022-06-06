@@ -55,17 +55,6 @@ def test_data_dir():
 
 
 @pytest.fixture
-def fake_gdown_cached_download(monkeypatch):
-    def ff(id=None, path=None, md5=None, quiet=None):  # fake function
-        assert id is not None
-        assert path is not None
-        assert md5 is not None
-        raise GdownCachedDownloadIsCalled()
-
-    monkeypatch.setattr('gdown.cached_download', ff)
-
-
-@pytest.fixture
 def tmp_dir(tmp_path):
     datetime_8_6_6 = datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     random_8 = random.randint(0, 0xffff_ffff)

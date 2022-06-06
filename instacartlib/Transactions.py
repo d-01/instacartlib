@@ -306,3 +306,4 @@ class Transactions:
         """
         download_from_info(TRANSACTIONS_DOWNLOAD_INFO, path_dir,
             self.show_progress)
+        return self
