@@ -19,10 +19,11 @@ Types of features:
 
 ```python
     fsds = FeaturesDataset(verbose=1)
-    df_features = fsds.extract_features(instacart_dataset_train)
+    df_features = fsds.extract_features(*instacart_dataset_train.frames)
 ```
 """
 
+from re import S
 from .feature_extractors import exports as feature_extractors
 from .DataFrameFileCache import DataFrameFileCache
 from .utils import get_df_info, increment_counter_suffix
@@ -43,12 +44,11 @@ class ExtractorExistsError(Exception):
     """ Extractor with the same name has been already registered. """
 
 
-def _use_extractor(function, ui_index, df_trns, df_prod):
+def _use_extractor(function, index, extractor_params):
     try:
-        return function(ui_index, df_trns, df_prod)
+        return function(index, **extractor_params)
     except Exception as e:
-        info = '  ' + str(e).replace('\n', '\n  ')
-        raise ExtractorCallError(f'Extractor failed with error:\n{info}')
+        raise ExtractorCallError(e)
 
 
 def _assert_extractor_output(extractor_output, expected_index):
@@ -87,20 +87,24 @@ def _get_feature_cache_path(features_cache_dir, name):
     return Path(features_cache_dir) / f'{name}.zip'
 
 
+def _new_ui_index(df_trns):
+        return df_trns.set_index(['uid', 'iid']).index.drop_duplicates()
+
+
 class FeaturesDataset:
-    def __init__(self, df_trns, df_prod, features_cache_dir=None, verbose=0):
+    """
+    ui_index : None or pd.Multiindex
+        Index for `df_ui` dataframe. If is None, try to create `ui_index`
+        automatically at first`add_feature` call.
+    features_cache_dir : None, str or Path
+        Use this directory for feature caching. Set to None to disable caching.
+    """
+    def __init__(self, ui_index=None, features_cache_dir=None, verbose=0):
         self.features_cache_dir = features_cache_dir
         self.verbose = verbose
 
-        self.df_trns = df_trns
-        self.df_prod = df_prod
-
-        ### move to `extract` method
-        ui_index = (self.df_trns
-            .set_index(['uid', 'iid'])
-            .index.drop_duplicates())
+        self._ui_index_created = ui_index is not None
         self.df_ui = pd.DataFrame(index=ui_index)
-        ###
 
         self._feature_extractors = {}
         self._feature_registry = {}
@@ -114,6 +118,7 @@ class FeaturesDataset:
 
     def _print(self, message, indent=0):
         if self.verbose > 0:
+            message = str(message)
             if indent > 0:
                 pad = ' ' * indent
                 message = pad + message.replace('\n', '\n' + pad)
@@ -137,20 +142,24 @@ class FeaturesDataset:
         return self
 
 
-    def extract_features(self):
+    def extract_features(self, **data_frames):
         if len(self._feature_extractors) == 0:
             self._print(
                 'No feature extractors have been registered yet. '
                 'Use `register_feature_extractors()` method first.')
 
+        if 'df_trns' not in data_frames:
+            raise ValueError('`df_trns` is required to generate `ui_index` '
+                'automatically.')
+
+        if not self._ui_index_created:
+            self._create_df_ui_index(data_frames['df_trns'])
+
         for extractor_name, function in self._feature_extractors.items():
             self._print(f'Using extractor: "{extractor_name}"')
 
             try:
-                output = _use_extractor(function,
-                                        self.df_ui.index,
-                                        self.df_trns,
-                                        self.df_prod)
+                output = _use_extractor(function, self.df_ui.index, data_frames)
                 _assert_extractor_output(output, self.df_ui.index)
             except Exception as e:
                 self._print(e, indent=2)
@@ -158,7 +167,6 @@ class FeaturesDataset:
 
             self._print(f'Extracted features: {list(output.columns)}',
                 indent=2)
-
             output, old_new_names_dict = (
                 _process_extractor_output(output, self._feature_registry))
             self._warn_renamed_features(old_new_names_dict)
@@ -166,6 +174,15 @@ class FeaturesDataset:
 
             self.df_ui = self.df_ui.join(output)
         return self
+
+
+    def _create_df_ui_index(self, df_trns):
+        try:
+            self.df_ui.index = _new_ui_index(df_trns)
+        except Exception as e:
+            raise ValueError('Unable to automatically generate `ui_index` '
+                'from `df_trns`.') from e
+        self._ui_index_created = True
 
 
     def _warn_renamed_features(self, old_new_names_dict):

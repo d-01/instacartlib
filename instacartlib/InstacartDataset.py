@@ -25,13 +25,7 @@ class InstacartDataset:
         self._products = Products(show_progress=self.verbose > 0)
 
         self.df_trns = pd.DataFrame()
-        self.df_trns_target = pd.DataFrame()  # ?
         self.df_prod = pd.DataFrame()
-        self.frames = {
-            'df_trns': self.df_trns,
-            'df_trns_target': self.df_trns_target,
-            'df_prod': self.df_prod,
-        }
 
         self.n_users = 0
         self.n_items = 0
@@ -40,12 +34,16 @@ class InstacartDataset:
         self.n_departments = 0
 
 
-    def _print(self, message, indent=0):
-        if self.verbose > 0:
-            if indent > 0:
-                pad = ' ' * indent
-                message = pad + message.replace('\n', '\n' + pad)
-            print(message)
+    def get_dataframes(self):
+        dataframes = dict(df_trns=self.df_trns, df_prod=self.df_prod)
+        if hasattr(self, 'df_trns_target'):
+            dataframes['df_trns_target'] = self.df_trns_target
+        return dataframes
+
+
+    @property
+    def dataframes(self):
+        return self.get_dataframes()
 
 
     def download(self, to_dir='instacart_temp/raw_data'):

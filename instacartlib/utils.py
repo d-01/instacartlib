@@ -2,6 +2,7 @@ import contextlib
 import time
 
 from pathlib import Path
+import pandas as pd
 
 import gdown
 
@@ -45,7 +46,9 @@ def format_size(size_bytes):
     return f'{size_gb} GB'
 
 
-def get_df_info(df):
+def get_df_info(df: pd.DataFrame) -> str:
+    if type(df) != pd.DataFrame:
+        raise TypeError(f'DataFrame expected, got: {type(df)}')
     memory_usage = df.memory_usage(deep=True).sum()
     return (f'<{type(df).__name__} '
             f'shape={df.shape} '

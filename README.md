@@ -14,9 +14,7 @@ order_C  user_B     1  item_B      0    0     2         -1         1
 order_D  user_B     0  item_B      1    0     2         -1         1
 '''))
 
-df_prod = pd.DataFrame()  # not used, but argument is required
-
-index = pd.MultiIndex.from_tuples([
+ui_index = pd.MultiIndex.from_tuples([
     ('user_A', 'item_A'),
     ('user_A', 'item_B'),
     ('user_B', 'item_A'),
@@ -26,7 +24,7 @@ index = pd.MultiIndex.from_tuples([
 
 def freq(ui_index: pd.MultiIndex,
          df_trns: pd.DataFrame,
-         df_prod: pd.DataFrame) -> pd.DataFrame:
+         **kwargs) -> pd.DataFrame:
     return (df_trns
         .groupby(['uid', 'iid'], sort=False)
         .size()
@@ -34,7 +32,7 @@ def freq(ui_index: pd.MultiIndex,
         .reindex(ui_index, fill_value=0)
     )
 
-freq(index, df_trns, df_prod)
+freq(ui_index, df_trns)
 #                freq
 # uid    iid         
 # user_A item_A     2
@@ -45,15 +43,23 @@ freq(index, df_trns, df_prod)
 
 Requirements:
 
-1. Feature extractor must take 3 parameters:
-   1. `ui_index` is a list of user-item pairs. Feature must be present for each user-item pair in output dataframe. Simply put, `output.index` must be equal to `ui_index`.
-   1. `df_trns` is a dataframe with transactions (order id, user id, product id, order number, etc.).
-   1. `df_prod` is a dataframe with products information (aisle, department, product name, etc.).
-1. Feature extractor must return a pandas.DataFrame with 1 or more columns:
-   1. `columns`: each column is a feature.
-   1. `index`: index is a list of (user, item) pairs equals to `ui_index`.
+1. Extractor must take target index as 1st positional argument and return a pandas.DataFrame with exactly same index.
+1. Extractor must have `**kwargs` in parameters list.
+1. Extractor must not mutate inputs (will be verified via hashing in the future).
+1. Extractor must return a pandas.DataFrame with 1 or more columns:
+   1. columns: one column per feature.
+   1. index: index is a list of (user, item) pairs equals to target index (`ui_index` in example).
+   1. All missing values must be filled (no NA values are allowed).
 
-Feature extractor can be added two ways:
+Data available to extractor:
+
+1. `ui_index` is a list of user-item pairs. Feature must be present for each user-item pair in output DataFrame. Simply put, `output.index` must be equal to `ui_index`.
+1. `df_trns` is a DataFrame with transactions (order id, user id, product id, order number, etc.).
+1. `df_prod` is a DataFrame with products information (aisle, department, product name, etc.).
+1. `df_trns_target` is a DataFrame with transactions only from the most recent order (target basket).
+   * This parameter is passed only if the dataset is a train dataset.
+
+There are two ways to add feature extractors:
 
 1. Automatically using plugin system.
 1. Manually using `InstacartDataset.register_feature_extractors({"name": func})` method.

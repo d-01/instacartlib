@@ -47,6 +47,11 @@ def test_get_df_info():
     assert 'memory=' in output
 
 
+def test_get_df_info_None():
+    with pytest.raises(TypeError):
+        get_df_info(None)
+
+
 @pytest.mark.parametrize("test_input,expected", [
     ('abc_123'  , ['abc'    , '123']),
     ('abc__123' , ['abc_'   , '123']),

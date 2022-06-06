@@ -2,7 +2,7 @@
 Transactions API.
 
 Capabilities:
-* Load raw transactions data from `*.csv` or `*.zip` files into DataFrame with 
+* Load raw transactions data from `*.csv` or `*.zip` files into DataFrame with
   appropriate dtype.
 * Deal with NaNs.
 * Limit number of orders to N most recent (per user)
@@ -14,6 +14,7 @@ Capabilities (planned):
 from .utils import download_from_info
 from .utils import dummy_contextmanager
 from .utils import timer_contextmanager
+from .utils import get_df_info
 
 from pathlib import Path
 
@@ -131,7 +132,7 @@ def _new_iord(df, start_count=0):
         Order C: 0
         Order D: 1
         Order E: 0
-    
+
     Parameters:
     -----------
     df: DataFrame
@@ -140,7 +141,7 @@ def _new_iord(df, start_count=0):
         - uid - user id
     start_count: int
         Lowest index to start from.
-    
+
     Return:
     -------
     iord: Series
@@ -243,8 +244,8 @@ class Transactions:
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        df_shape = None if self.df is None else self.df.shape
-        return f'<{class_name} df={df_shape}>'
+        df_info = 'None' if self.df is None else get_df_info(self.df)
+        return f'<{class_name} df={df_info}>'
 
 
     def _preprocess_raw_columns(self):
@@ -274,7 +275,7 @@ class Transactions:
         current path or given local directory into DataFrame.
 
         path_dir: str or pathlib.Path
-            Path to directory with `transactions.csv` or `transactions.csv.zip` 
+            Path to directory with `transactions.csv` or `transactions.csv.zip`
             files.
         reduced: {False, True}
             Read transactions for the first 6000 users.

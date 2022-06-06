@@ -1,5 +1,5 @@
 
-def avg_cart_pos(index, df_trns, df_prod):
+def avg_cart_pos(index, df_trns, **kwargs):
     """ Position of item B in user's A cart on average.
              avg_cart_pos
     uid iid

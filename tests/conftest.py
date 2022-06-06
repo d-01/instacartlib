@@ -98,9 +98,14 @@ def df_trns(df_trns_raw):
 
 
 @pytest.fixture
+def df_trns_target(df_trns):
+    return df_trns[df_trns.iord == 0]
+
+
+@pytest.fixture
 def ui_index(df_trns):
-    ui = df_trns.drop_duplicates(['uid', 'iid']).set_index(['uid', 'iid'])
-    return ui.index
+    df_ui = df_trns.drop_duplicates(['uid', 'iid']).set_index(['uid', 'iid'])
+    return df_ui.index
 
 
 @pytest.fixture
@@ -132,3 +137,22 @@ def df_prod_raw(products_csv_path):
 def df_prod(df_prod_raw):
     return prods_preprocess(df_prod_raw)
 
+
+################################################################################
+# Extractors
+################################################################################
+
+@pytest.fixture
+def data_frames(df_trns, df_prod):
+    return dict(
+        df_trns=df_trns,
+        df_prod=df_prod,
+    )
+
+@pytest.fixture
+def data_frames_target(df_trns, df_trns_target, df_prod):
+    return dict(
+        df_trns=df_trns,
+        df_trns_target=df_trns_target,
+        df_prod=df_prod,
+    )

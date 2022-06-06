@@ -35,6 +35,11 @@ def df_trns_1():
 
 
 @pytest.fixture
+def df_trns_target_1(df_trns_1):
+    return df_trns_1[df_trns_1.iord == 0]
+
+
+@pytest.fixture
 def df_prod_1():
     return pd.read_fwf(io.StringIO(PRODUCTS_CSV))
 
@@ -56,37 +61,64 @@ def ui_index_1():
     ''')).set_index(['uid', 'iid']).index
 
 
+@pytest.fixture
+def data_frames_1(df_trns_1, df_prod_1):
+    return dict(
+        df_trns=df_trns_1,
+        df_prod=df_prod_1,
+    )
+
+
+@pytest.fixture
+def data_frames_target_1(df_trns_1, df_prod_1, df_trns_target_1):
+    return dict(
+        df_trns=df_trns_1,
+        df_trns_target=df_trns_target_1,
+        df_prod=df_prod_1,
+    )
+
+
+
 @pytest.mark.parametrize("extractor_name", feature_extractors.keys())
-def test_feature_extractors_output_valid(extractor_name,
-        ui_index_1, df_trns_1, df_prod_1):
+def test_feature_extractors_output_valid(extractor_name, ui_index_1,
+        data_frames_1):
     function = feature_extractors[extractor_name]
-    test_output = function(ui_index_1, df_trns_1, df_prod_1)
+    test_output = function(ui_index_1, **data_frames_1)
     pd.testing.assert_index_equal(test_output.index, ui_index_1)
     assert test_output.isna().values.sum() == 0
+
+    with pytest.raises(TypeError,
+            match=r'missing \d+ required positional argument'):
+        test_output = function()
+
+    extra_data_frames = {'unused_1': 1, 'unused_2': 2, **data_frames_1}
+    test_output = function(ui_index_1, **extra_data_frames)
+
 
 
 @pytest.mark.skipif(
     '000_ui_freq.freq' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_ui_freq(ui_index, df_trns, uids, iids):
+def test_ui_freq(ui_index, data_frames, uids, iids):
     freq = feature_extractors['000_ui_freq.freq']
 
-    test_output = freq(ui_index, df_trns, None)
+    test_output = freq(ui_index, **data_frames)
     assert type(test_output) == pd.DataFrame
     assert test_output.columns == ['freq']
     assert (test_output.freq.loc[uids[0], iids[[0, 1, 2]]].to_list()
         == [10, 1, 10])
+    pd.testing.assert_index_equal(test_output.index, ui_index)
 
 
 @pytest.mark.skipif(
     '000_ui_freq.freq' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_ui_freq__1(ui_index_1, df_trns_1):
+def test_ui_freq__1(ui_index_1, data_frames_1):
     freq = feature_extractors['000_ui_freq.freq']
 
-    test_output = freq(ui_index_1, df_trns_1, None)
+    test_output = freq(ui_index_1, **data_frames_1)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  freq
         user_A  item_A     2
@@ -107,24 +139,25 @@ def test_ui_freq__1(ui_index_1, df_trns_1):
     '001_ui_avg_cart_pos.avg_cart_pos' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_avg_cart_pos(ui_index, df_trns, uids, iids):
+def test_avg_cart_pos(ui_index, data_frames, uids, iids):
     avg_cart_pos = feature_extractors['001_ui_avg_cart_pos.avg_cart_pos']
 
-    out = avg_cart_pos(ui_index, df_trns, None)
+    out = avg_cart_pos(ui_index, **data_frames)
     assert type(out) == pd.DataFrame
     assert 'avg_cart_pos' in out.columns
     assert (out['avg_cart_pos'].loc[uids[0], iids[[0, 1, 2]]].to_list()
         == [1.4, 2.0, 3.3])
+    pd.testing.assert_index_equal(out.index, ui_index)
 
 
 @pytest.mark.skipif(
     '001_ui_avg_cart_pos.avg_cart_pos' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_avg_cart_pos__1(ui_index_1, df_trns_1, df_prod_1):
+def test_avg_cart_pos__1(ui_index_1, data_frames_1):
     avg_cart_pos = feature_extractors['001_ui_avg_cart_pos.avg_cart_pos']
 
-    test_output = avg_cart_pos(ui_index_1, df_trns_1, df_prod_1)
+    test_output = avg_cart_pos(ui_index_1, **data_frames_1)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  avg_cart_pos
         user_A  item_A           1.5

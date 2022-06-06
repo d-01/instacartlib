@@ -1,6 +1,4 @@
 
-
-
 from instacartlib.FeaturesDataset import ExtractorCallError
 from instacartlib.FeaturesDataset import ExtractorInvalidOutputError
 from instacartlib.FeaturesDataset import ExtractorExistsError
@@ -47,13 +45,13 @@ def extractor_invalid():
     return func
 
 
-def test_use_extractor_invalid(extractor_invalid, ui_index, df_trns, df_prod):
-    _use_extractor(extractor_invalid, ui_index, df_trns, df_prod)
+def test_use_extractor_invalid(extractor_invalid, ui_index, data_frames):
+    _use_extractor(extractor_invalid, ui_index, data_frames)
 
 
-def test_use_extractor_broken(extractor_broken, ui_index, df_trns, df_prod):
+def test_use_extractor_broken(extractor_broken, ui_index, data_frames):
     with pytest.raises(ExtractorCallError, match='broken extractor'):
-        _use_extractor(extractor_broken, ui_index, df_trns, df_prod)
+        _use_extractor(extractor_broken, ui_index, data_frames)
 
 
 def test_assert_extractor_output_valid(extractor_valid, ui_index, df_trns,
@@ -88,17 +86,12 @@ def test_get_feature_cache_path():
     assert output.as_posix() == 'dir/name.zip'
 
 
-def test_FeatureExtractor_usage_no_cache(df_trns, df_prod, extractor_valid,
+def test_FeaturesDataset_usage_no_cache(df_trns, df_prod, extractor_valid,
         has_been_called):
-    fsds = FeaturesDataset(df_trns, df_prod, verbose=1)
-    assert type(fsds.df_trns) == pd.DataFrame
-    assert type(fsds.df_prod) == pd.DataFrame
-    assert type(fsds.df_ui) == pd.DataFrame
-    assert len(fsds.df_ui.columns) == 0
-    assert len(fsds.df_ui.index) == 624
+    fsds = FeaturesDataset(verbose=1)
 
     fsds._feature_extractors = {}
-    fsds.extract_features()
+    fsds.extract_features(df_trns=df_trns, df_prod=df_prod)
     assert len(fsds.df_ui.columns) == 0
 
     fsds.register_feature_extractors({"extractor_1": extractor_valid})
@@ -110,11 +103,11 @@ def test_FeatureExtractor_usage_no_cache(df_trns, df_prod, extractor_valid,
     assert fsds._feature_registry == {}
 
     assert has_been_called(id='extractor_valid').times == 0
-    fsds.extract_features()
+    fsds.extract_features(df_trns=df_trns, df_prod=df_prod)
     assert has_been_called(id='extractor_valid').times == 1
     assert fsds._feature_registry == {'feature_A': 'extractor_1'}
     assert fsds.df_ui.columns.to_list() == ['feature_A']
-    fsds.extract_features()
+    fsds.extract_features(df_trns=df_trns, df_prod=df_prod)
     assert has_been_called(id='extractor_valid').times == 2
     assert fsds._feature_registry == {
         'feature_A': 'extractor_1',
@@ -123,10 +116,10 @@ def test_FeatureExtractor_usage_no_cache(df_trns, df_prod, extractor_valid,
     assert fsds.df_ui.columns.to_list() == ['feature_A', 'feature_A_1']
 
 
-def test_FeatureExtractor_usage_with_cache(df_trns, df_prod, tmp_dir,
+def test_FeaturesDataset_usage_with_cache(df_trns, df_prod, tmp_dir,
         extractor_valid, extractor_invalid, extractor_broken,
         extractor_valid_duplicate, has_been_called):
-    fsds = FeaturesDataset(df_trns, df_prod, features_cache_dir=tmp_dir)
+    fsds = FeaturesDataset(features_cache_dir=tmp_dir)
     fsds._feature_extractors = {}
 
     fsds.register_feature_extractors({
@@ -141,7 +134,7 @@ def test_FeatureExtractor_usage_with_cache(df_trns, df_prod, tmp_dir,
     assert fsds.df_ui.columns.to_list() == []
 
     assert has_been_called(id='extractor_valid').times == 0
-    fsds.extract_features()
+    fsds.extract_features(df_trns=df_trns, df_prod=df_prod)
     assert has_been_called(id='extractor_valid').times == 1
     assert (tmp_dir / 'extractor_1.zip').exists()
     assert (tmp_dir / 'extractor_2.zip').exists()
@@ -152,7 +145,7 @@ def test_FeatureExtractor_usage_with_cache(df_trns, df_prod, tmp_dir,
         'feature_A_1': 'extractor_4',
     }
     assert fsds.df_ui.columns.to_list() == ['feature_A', 'feature_A_1']
-    fsds.extract_features()
+    fsds.extract_features(df_trns=df_trns, df_prod=df_prod)
     assert has_been_called(id='extractor_valid').times == 1
     assert fsds._feature_registry == {
         'feature_A': 'extractor_1',
@@ -162,3 +155,14 @@ def test_FeatureExtractor_usage_with_cache(df_trns, df_prod, tmp_dir,
     }
     assert fsds.df_ui.columns.to_list() == ['feature_A', 'feature_A_1',
         'feature_A_2', 'feature_A_3']
+
+
+def test_FeaturesDataset_print(capsys):
+    fsds = FeaturesDataset(verbose=1)
+    capsys.readouterr()
+    fsds._print([1, 2, 3], indent=2)
+    out_1, _ = capsys.readouterr()
+    assert out_1.startswith('  [1, 2, 3]')
+    fsds._print(ValueError('info'), indent=-1)
+    out_2, _ = capsys.readouterr()
+    assert out_2.startswith('info')

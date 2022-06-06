@@ -1,6 +1,7 @@
 from .utils import download_from_info
 from .utils import dummy_contextmanager
 from .utils import timer_contextmanager
+from .utils import get_df_info
 
 from pathlib import Path
 
@@ -62,7 +63,7 @@ def read_products_csv(filepath_or_buffer):
 def preprocess_raw_columns(df_raw):
     """
     df_raw: DataFrame
-        Columns (6): product_id, product_name, aisle_id, department_id, aisle, 
+        Columns (6): product_id, product_name, aisle_id, department_id, aisle,
         department
 
     Return:
@@ -92,7 +93,7 @@ class Products:
     - dept - department name
     - aisle - aisle name
     - product - product name
-    
+
     show_progress: {False, True}
         No op. Left for consistency with Transactions API.
     """
@@ -120,7 +121,7 @@ class Products:
 
     def from_dir(self, path_dir='.', reduced=False):
         """
-        Read `products.csv` with raw data from current path or given local 
+        Read `products.csv` with raw data from current path or given local
         directory into DataFrame.
 
         path_dir: str or pathlib.Path
@@ -137,5 +138,5 @@ class Products:
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        df_shape = None if self.df is None else self.df.shape
-        return f'<{class_name} df={df_shape}>'
+        df_info = 'None' if self.df is None else get_df_info(self.df)
+        return f'<{class_name} df={df_info}>'

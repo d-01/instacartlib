@@ -1,5 +1,5 @@
 
-def freq(index, df_trns, df_prod):
+def freq(index, df_trns, **kwargs):
     """ Number of times user A purchaised item B.
              freq
     uid iid

@@ -35,22 +35,38 @@ def test_InstacartDataset_download(
     assert has_been_called.total == 2
 
 
-def test_InstacartDataset_usage_no_cache(test_data_dir):
-    inst = InstacartDataset(verbose=1)
-    assert type(inst.df_trns) == pd.DataFrame
-    assert type(inst.df_prod) == pd.DataFrame
-    assert inst.df_trns.shape == (0, 0)
-    assert inst.df_prod.shape == (0, 0)
+def test_InstacartDataset_usage(test_data_dir):
+    icds = InstacartDataset(verbose=1)
+    assert type(icds.df_trns) == pd.DataFrame
+    assert type(icds.df_prod) == pd.DataFrame
+    assert icds.df_trns.shape == (0, 0)
+    assert icds.df_prod.shape == (0, 0)
+    assert icds.get_dataframes() == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+    }
+    assert icds.dataframes == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+    }
 
-    inst.read_dir(test_data_dir)
-    assert type(inst.df_trns) == pd.DataFrame
-    assert type(inst.df_prod) == pd.DataFrame
-    assert inst.df_trns.shape == (1468, 9)
-    assert inst.df_trns.columns.to_list() == ['oid', 'uid', 'iord', 'iid',
+    icds.read_dir(test_data_dir)
+    assert type(icds.df_trns) == pd.DataFrame
+    assert type(icds.df_prod) == pd.DataFrame
+    assert icds.df_trns.shape == (1468, 9)
+    assert icds.df_trns.columns.to_list() == ['oid', 'uid', 'iord', 'iid',
         'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
-    assert inst.df_prod.shape == (577, 6)
-    assert inst.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
+    assert icds.df_prod.shape == (577, 6)
+    assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
         'dept', 'aisle', 'product']
+    assert icds.get_dataframes() == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+    }
+    assert icds.dataframes == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+    }
 
 
 def test_InstacartDataset_repr():
