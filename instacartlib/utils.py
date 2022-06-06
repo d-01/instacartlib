@@ -46,13 +46,17 @@ def format_size(size_bytes):
     return f'{size_gb} GB'
 
 
+def get_df_size_bytes(df: pd.DataFrame, deep=True) -> int:
+    return df.memory_usage(deep=deep).sum()
+
+
 def get_df_info(df: pd.DataFrame) -> str:
     if type(df) != pd.DataFrame:
         raise TypeError(f'DataFrame expected, got: {type(df)}')
-    memory_usage = df.memory_usage(deep=True).sum()
+    memory_usage = get_df_size_bytes(df)
     return (f'<{type(df).__name__} '
             f'shape={df.shape} '
-            f'memory={format_size(memory_usage)}>')
+            f'memory=\'{format_size(memory_usage)}\'>')
 
 
 def split_counter_suffix(string, sep='_'):

@@ -135,6 +135,16 @@ def test_Transactions_keep_last_orders_n_5(transactions):
     assert df_user2.iord.drop_duplicates().to_list() == [4, 3, 2, 1, 0]
 
 
+@pytest.mark.parametrize('n_last_orders,n_trns', [
+    (0, 0),
+    (1, 90),
+    (2, 164),
+])
+def test_Transactions_get_last_orders(transactions, n_last_orders, n_trns):
+    df = transactions.get_last_orders(n_last_orders)
+    assert len(df) == n_trns
+
+
 def test_Transactions_drop_last_orders_n_required(transactions):
     with pytest.raises(TypeError,
             match=r'missing \d+ required positional argument'):

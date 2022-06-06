@@ -143,14 +143,14 @@ def df_prod(df_prod_raw):
 ################################################################################
 
 @pytest.fixture
-def data_frames(df_trns, df_prod):
+def dataframes(df_trns, df_prod):
     return dict(
         df_trns=df_trns,
         df_prod=df_prod,
     )
 
 @pytest.fixture
-def data_frames_target(df_trns, df_trns_target, df_prod):
+def dataframes_target(df_trns, df_trns_target, df_prod):
     return dict(
         df_trns=df_trns,
         df_trns_target=df_trns_target,

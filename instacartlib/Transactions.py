@@ -269,6 +269,10 @@ class Transactions:
         return self
 
 
+    def get_last_orders(self, n):
+        return self.df[self.df.iord < n]
+
+
     def from_dir(self, path_dir='.', reduced=False):
         """
         Read files `transactions.csv` and `products.csv` with raw data from

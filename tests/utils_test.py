@@ -1,9 +1,12 @@
+from instacartlib.utils import get_df_size_bytes
 from instacartlib.utils import timer_contextmanager
 from instacartlib.utils import dummy_contextmanager
 from instacartlib.utils import format_size
 from instacartlib.utils import get_df_info
 from instacartlib.utils import split_counter_suffix
 from instacartlib.utils import increment_counter_suffix
+
+import warnings
 
 import pandas as pd
 import pytest
@@ -36,6 +39,20 @@ def test_dummy_contextmanager(capsys):
 ])
 def test_format_size(test_input, expected):
     assert format_size(test_input) == expected
+
+
+def test_format_size_invalid():
+    with pytest.raises(ValueError):
+        format_size(-1)
+
+
+def test_get_df_size_bytes():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        assert get_df_size_bytes(pd.DataFrame()) == 0
+        assert get_df_size_bytes(pd.DataFrame(), deep=False) == 0
+    assert get_df_size_bytes(pd.DataFrame(['abcd'])) == 189
+    assert get_df_size_bytes(pd.DataFrame(['abcd']), deep=False) == 136
 
 
 def test_get_df_info():

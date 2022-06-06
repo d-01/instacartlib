@@ -45,13 +45,13 @@ def extractor_invalid():
     return func
 
 
-def test_use_extractor_invalid(extractor_invalid, ui_index, data_frames):
-    _use_extractor(extractor_invalid, ui_index, data_frames)
+def test_use_extractor_invalid(extractor_invalid, ui_index, dataframes):
+    _use_extractor(extractor_invalid, ui_index, dataframes)
 
 
-def test_use_extractor_broken(extractor_broken, ui_index, data_frames):
+def test_use_extractor_broken(extractor_broken, ui_index, dataframes):
     with pytest.raises(ExtractorCallError, match='broken extractor'):
-        _use_extractor(extractor_broken, ui_index, data_frames)
+        _use_extractor(extractor_broken, ui_index, dataframes)
 
 
 def test_assert_extractor_output_valid(extractor_valid, ui_index, df_trns,
@@ -119,7 +119,7 @@ def test_FeaturesDataset_usage_no_cache(df_trns, df_prod, extractor_valid,
 def test_FeaturesDataset_usage_with_cache(df_trns, df_prod, tmp_dir,
         extractor_valid, extractor_invalid, extractor_broken,
         extractor_valid_duplicate, has_been_called):
-    fsds = FeaturesDataset(features_cache_dir=tmp_dir)
+    fsds = FeaturesDataset(features_cache_dir=tmp_dir, verbose=10)
     fsds._feature_extractors = {}
 
     fsds.register_feature_extractors({

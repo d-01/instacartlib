@@ -35,12 +35,14 @@ def test_InstacartDataset_download(
     assert has_been_called.total == 2
 
 
-def test_InstacartDataset_usage(test_data_dir):
+def test_InstacartDataset_train_default_usage(test_data_dir):
     icds = InstacartDataset(verbose=1)
     assert type(icds.df_trns) == pd.DataFrame
     assert type(icds.df_prod) == pd.DataFrame
+    assert type(icds.df_trns_target) == pd.DataFrame
     assert icds.df_trns.shape == (0, 0)
     assert icds.df_prod.shape == (0, 0)
+    assert icds.df_trns_target.shape == (0, 0)
     assert icds.get_dataframes() == {
         'df_trns': icds.df_trns,
         'df_prod': icds.df_prod,
@@ -53,9 +55,13 @@ def test_InstacartDataset_usage(test_data_dir):
     icds.read_dir(test_data_dir)
     assert type(icds.df_trns) == pd.DataFrame
     assert type(icds.df_prod) == pd.DataFrame
+    assert type(icds.df_trns_target) == pd.DataFrame
+    assert icds.df_trns_target.shape == (0, 0)
     assert icds.df_trns.shape == (1468, 9)
     assert icds.df_trns.columns.to_list() == ['oid', 'uid', 'iord', 'iid',
         'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
+    df_orders_uid_1 = icds.df_trns[icds.df_trns.uid == 1].drop_duplicates('oid')
+    assert (df_orders_uid_1.iord.to_list() == [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
     assert icds.df_prod.shape == (577, 6)
     assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
         'dept', 'aisle', 'product']
@@ -69,6 +75,52 @@ def test_InstacartDataset_usage(test_data_dir):
     }
 
 
+def test_InstacartDataset_train_true(test_data_dir):
+    icds = InstacartDataset(train=True, verbose=1)
+    assert type(icds.df_trns) == pd.DataFrame
+    assert type(icds.df_prod) == pd.DataFrame
+    assert type(icds.df_trns_target) == pd.DataFrame
+    assert icds.df_trns.shape == (0, 0)
+    assert icds.df_prod.shape == (0, 0)
+    assert icds.df_trns_target.shape == (0, 0)
+    assert icds.get_dataframes() == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+        'df_trns_target': icds.df_trns_target,
+    }
+    assert icds.dataframes == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+        'df_trns_target': icds.df_trns_target,
+    }
+
+    icds.read_dir(test_data_dir)
+    assert type(icds.df_trns) == pd.DataFrame
+    assert type(icds.df_prod) == pd.DataFrame
+    assert type(icds.df_trns_target) == pd.DataFrame
+    assert icds.df_trns.shape == (1378, 9)
+    assert icds.df_trns.columns.to_list() == ['oid', 'uid', 'iord', 'iid',
+        'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
+    df_orders_uid_1 = icds.df_trns[icds.df_trns.uid == 1].drop_duplicates('oid')
+    assert (df_orders_uid_1.iord.to_list() == [8, 7, 6, 5, 4, 3, 2, 1, 0])
+    assert icds.df_prod.shape == (577, 6)
+    assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
+        'dept', 'aisle', 'product']
+    assert icds.df_trns_target.shape == (90, 9)
+    assert icds.df_trns_target.columns.to_list() == ['oid', 'uid', 'iord',
+        'iid', 'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
+    assert (icds.df_trns_target.iord == 0).all()
+    assert icds.get_dataframes() == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+        'df_trns_target': icds.df_trns_target,
+    }
+    assert icds.dataframes == {
+        'df_trns': icds.df_trns,
+        'df_prod': icds.df_prod,
+        'df_trns_target': icds.df_trns_target,
+    }
+
 def test_InstacartDataset_repr():
     InstacartDataset_repr = repr(InstacartDataset())
     assert InstacartDataset_repr.startswith('<InstacartDataset')
@@ -77,7 +129,7 @@ def test_InstacartDataset_repr():
 
 
 def test_InstacartDataset_info(capsys):
-    inst = InstacartDataset()
+    inst = InstacartDataset(train=True)
     capsys.readouterr()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

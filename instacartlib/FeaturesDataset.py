@@ -142,24 +142,24 @@ class FeaturesDataset:
         return self
 
 
-    def extract_features(self, **data_frames):
+    def extract_features(self, **dataframes):
         if len(self._feature_extractors) == 0:
             self._print(
                 'No feature extractors have been registered yet. '
                 'Use `register_feature_extractors()` method first.')
 
-        if 'df_trns' not in data_frames:
+        if 'df_trns' not in dataframes:
             raise ValueError('`df_trns` is required to generate `ui_index` '
                 'automatically.')
 
         if not self._ui_index_created:
-            self._create_df_ui_index(data_frames['df_trns'])
+            self._create_df_ui_index(dataframes['df_trns'])
 
         for extractor_name, function in self._feature_extractors.items():
             self._print(f'Using extractor: "{extractor_name}"')
 
             try:
-                output = _use_extractor(function, self.df_ui.index, data_frames)
+                output = _use_extractor(function, self.df_ui.index, dataframes)
                 _assert_extractor_output(output, self.df_ui.index)
             except Exception as e:
                 self._print(e, indent=2)
