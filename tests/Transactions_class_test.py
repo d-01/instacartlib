@@ -2,8 +2,6 @@
 from unittest.mock import patch
 from instacartlib.Transactions import Transactions
 
-from .conftest import GdownCachedDownloadIsCalled
-
 import os
 import numpy as np
 import pandas as pd
@@ -141,14 +139,12 @@ def test_Transactions_keep_last_orders_n_5(transactions):
     assert df_user2.iord.drop_duplicates().to_list() == [4, 3, 2, 1, 0]
 
 
-@pytest.mark.parametrize('n_last_orders,n_trns', [
-    (0, 0),
-    (1, 90),
-    (2, 164),
-])
-def test_Transactions_get_last_orders(transactions, n_last_orders, n_trns):
-    df = transactions.get_last_orders(n_last_orders)
-    assert len(df) == n_trns
+def test_Transactions_get_last_orders(transactions):
+    df_before_call = transactions.df
+    output = transactions.get_last_orders(1)
+    assert type(output) == pd.DataFrame
+    assert len(output) == 90
+    assert transactions.df is df_before_call
 
 
 def test_Transactions_drop_last_orders_n_required(transactions):

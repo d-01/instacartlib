@@ -1,5 +1,6 @@
 
 from instacartlib.Transactions import read_transactions_csv
+from instacartlib.Transactions import _update_iord
 from instacartlib.Transactions import _preprocess_raw_columns as trns_preprocess
 
 from instacartlib.Products import read_products_csv
@@ -14,9 +15,6 @@ import pytest
 
 
 CLEANUP_TEMP_DIR = False
-
-class GdownCachedDownloadIsCalled(Exception):
-    pass
 
 
 @pytest.fixture
@@ -77,13 +75,25 @@ def transactions_csv_path(test_data_dir):
 
 
 @pytest.fixture
+def n_trns(transactions_csv_path):
+    return 1468
+
+
+@pytest.fixture
+def n_trns_target(transactions_csv_path):
+    """ Transactions in most recent orders. """
+    return 90
+
+
+@pytest.fixture
 def df_trns_raw(transactions_csv_path):
     return read_transactions_csv(transactions_csv_path)
 
 
 @pytest.fixture
 def df_trns(df_trns_raw):
-    return trns_preprocess(df_trns_raw)
+    df = trns_preprocess(df_trns_raw)
+    return _update_iord(df)
 
 
 @pytest.fixture

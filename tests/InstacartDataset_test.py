@@ -35,7 +35,28 @@ def test_InstacartDataset_download(
     assert has_been_called.total == 2
 
 
-def test_InstacartDataset_train_default_usage(test_data_dir):
+@pytest.fixture
+def required_trns_cols():
+    return {
+        'oid',
+        'uid',
+        'iord',
+        'iid',
+        'reord',
+        # 'dow',
+        # 'hour',
+        'days_prev',
+        'cart_pos',
+    }
+
+
+@pytest.fixture
+def n_trns_cols(required_trns_cols):
+    return len(required_trns_cols)
+
+
+def test_InstacartDataset_train_default_usage(test_data_dir, required_trns_cols,
+        n_trns, n_trns_cols):
     icds = InstacartDataset(verbose=1)
     assert type(icds.df_trns) == pd.DataFrame
     assert type(icds.df_prod) == pd.DataFrame
@@ -57,9 +78,8 @@ def test_InstacartDataset_train_default_usage(test_data_dir):
     assert type(icds.df_prod) == pd.DataFrame
     assert type(icds.df_trns_target) == pd.DataFrame
     assert icds.df_trns_target.shape == (0, 0)
-    assert icds.df_trns.shape == (1468, 9)
-    assert icds.df_trns.columns.to_list() == ['oid', 'uid', 'iord', 'iid',
-        'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
+    assert icds.df_trns.shape == (n_trns, n_trns_cols)
+    assert required_trns_cols - set(icds.df_trns.columns) == set()
     df_orders_uid_1 = icds.df_trns[icds.df_trns.uid == 1].drop_duplicates('oid')
     assert (df_orders_uid_1.iord.to_list() == [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
     assert icds.df_prod.shape == (577, 6)
@@ -75,7 +95,8 @@ def test_InstacartDataset_train_default_usage(test_data_dir):
     }
 
 
-def test_InstacartDataset_train_true(test_data_dir):
+def test_InstacartDataset_train_true_usage(test_data_dir, n_trns, n_trns_cols,
+        n_trns_target, required_trns_cols):
     icds = InstacartDataset(train=True, verbose=1)
     assert type(icds.df_trns) == pd.DataFrame
     assert type(icds.df_prod) == pd.DataFrame
@@ -98,17 +119,15 @@ def test_InstacartDataset_train_true(test_data_dir):
     assert type(icds.df_trns) == pd.DataFrame
     assert type(icds.df_prod) == pd.DataFrame
     assert type(icds.df_trns_target) == pd.DataFrame
-    assert icds.df_trns.shape == (1378, 9)
-    assert icds.df_trns.columns.to_list() == ['oid', 'uid', 'iord', 'iid',
-        'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
+    assert icds.df_trns.shape == (n_trns - n_trns_target, n_trns_cols)
+    assert required_trns_cols - set(icds.df_trns.columns) == set()
     df_orders_uid_1 = icds.df_trns[icds.df_trns.uid == 1].drop_duplicates('oid')
     assert (df_orders_uid_1.iord.to_list() == [8, 7, 6, 5, 4, 3, 2, 1, 0])
     assert icds.df_prod.shape == (577, 6)
     assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
         'dept', 'aisle', 'prod']
-    assert icds.df_trns_target.shape == (90, 9)
-    assert icds.df_trns_target.columns.to_list() == ['oid', 'uid', 'iord',
-        'iid', 'reord', 'dow', 'hour', 'days_prev', 'cart_pos']
+    assert icds.df_trns_target.shape == (n_trns_target, n_trns_cols)
+    assert required_trns_cols - set(icds.df_trns_target.columns) == set()
     assert (icds.df_trns_target.iord == 0).all()
     assert icds.get_dataframes() == {
         'df_trns': icds.df_trns,
