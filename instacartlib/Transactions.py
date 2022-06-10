@@ -281,7 +281,7 @@ class Transactions:
         return get_last_orders(self.df, n)
 
 
-    def from_dir(self, path_dir='.', reduced=False):
+    def read_dir(self, path_dir='.', reduced=False):
         """
         Read files `transactions.csv` and `products.csv` with raw data from
         current path or given local directory into DataFrame.

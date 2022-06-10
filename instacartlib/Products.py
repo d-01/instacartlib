@@ -120,7 +120,7 @@ class Products:
         return self
 
 
-    def from_dir(self, path_dir='.', reduced=False):
+    def read_dir(self, path_dir='.', reduced=False):
         """
         Read `products.csv` with raw data from current path or given local
         directory into DataFrame.

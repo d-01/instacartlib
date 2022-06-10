@@ -80,12 +80,12 @@ class InstacartDataset:
 
 
     def read_dir(self, path_dir='instacart_temp/raw_data', reduced=False):
-        self._transactions.from_dir(path_dir=path_dir, reduced=reduced)
+        self._transactions.read_dir(path_dir=path_dir, reduced=reduced)
         if self.train:
             self._create_target()
         self.df_trns = self._transactions.df
 
-        self._products.from_dir(path_dir=path_dir, reduced=reduced)
+        self._products.read_dir(path_dir=path_dir, reduced=reduced)
         self.df_prod = self._products.df
         self._update_stats()
         return self

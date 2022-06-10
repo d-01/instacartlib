@@ -9,7 +9,7 @@ import pytest
 
 @pytest.fixture
 def products(test_data_dir):
-    return Products().from_dir(test_data_dir)
+    return Products().read_dir(test_data_dir)
 
 
 def test_Products_load_from_gdrive():
