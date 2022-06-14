@@ -107,7 +107,9 @@ def split_last_order(df_trns):
     """
     last_order_ids = df_trns.drop_duplicates('uid', keep='last').order_id
     is_last_order = df_trns.order_id.isin(last_order_ids)
-    return (df_trns[~is_last_order], df_trns[is_last_order])
+    df_trns_past = df_trns[~is_last_order].reset_index(drop=True)
+    df_trns_target = df_trns[is_last_order].reset_index(drop=True)
+    return (df_trns_past, df_trns_target)
 
 
 

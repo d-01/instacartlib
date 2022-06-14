@@ -1,6 +1,6 @@
 from instacartlib.Products import get_products_csv_path
 from instacartlib.Products import read_products_csv
-from instacartlib.Products import preprocess_raw_columns
+from instacartlib.Products import _preprocess_raw_products
 from instacartlib.Products import InvalidProductsData
 
 import io
@@ -25,11 +25,11 @@ def expected_raw_col_types():
 def expected_col_types():
     return {
         'iid': np.dtype('uint32'),
-        'dept_id': np.dtype('uint32'),
+        'department_id': np.dtype('uint32'),
         'aisle_id': np.dtype('uint32'),
-        'dept': np.dtype('object'),
+        'department': np.dtype('object'),
         'aisle': np.dtype('object'),
-        'prod': np.dtype('object'),
+        'product_name': np.dtype('object'),
     }
 
 
@@ -75,7 +75,7 @@ def test_df_prod_col_types(df_prod, expected_col_types):
 
 
 def test_preprocess_raw_columns(df_prod_raw):
-    output = preprocess_raw_columns(df_prod_raw)
+    output = _preprocess_raw_products(df_prod_raw)
     assert type(output) == pd.DataFrame
     assert output.shape == (577, 6)
 

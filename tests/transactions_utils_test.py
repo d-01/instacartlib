@@ -131,25 +131,25 @@ def test_get_df_trns_from_raw_missing_columns_excluded(df_raw_missing_columns):
 
 def test_split_last_order():
     df_trns = pd.read_fwf(io.StringIO('''\
-        #  order_id     uid  extra_column
-        0     ord_2  user_A        item_A
-        1     ord_3  user_A        item_B
-        2     ord_3  user_A        item_A
-        3     ord_4  user_A        item_A
-        4     ord_5  user_A        item_A
-        5     ord_5  user_A        item_B
-        6     ord_8  user_B        item_C
-        7     ord_9  user_B        item_C
-        8     ord_9  user_B        item_B
-        9     ord_0  user_B        item_C
+        #  order_id     uid  row_id
+        0     ord_2  user_A       0
+        1     ord_3  user_A       1
+        2     ord_3  user_A       2
+        3     ord_4  user_A       3
+        4     ord_5  user_A       4
+        5     ord_5  user_A       5
+        6     ord_8  user_B       6
+        7     ord_9  user_B       7
+        8     ord_9  user_B       8
+        9     ord_0  user_B       9
         ''')).set_index('#')
 
     output = split_last_order(df_trns)
 
     assert type(output) == tuple
     assert len(output) == 2
-    assert output[0].index.to_list() == [0, 1, 2, 3, 6, 7, 8]
-    assert output[1].index.to_list() == [4, 5, 9]
+    assert output[0].row_id.to_list() == [0, 1, 2, 3, 6, 7, 8]
+    assert output[1].row_id.to_list() == [4, 5, 9]
 
 
 def test_get_order_days_until_last(df_trns):

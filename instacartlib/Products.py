@@ -60,7 +60,7 @@ def read_products_csv(filepath_or_buffer):
     return df_raw
 
 
-def preprocess_raw_columns(df_raw):
+def _preprocess_raw_products(df_raw, verbose=0):
     """
     df_raw: DataFrame
         Columns (6): product_id, product_name, aisle_id, department_id, aisle,
@@ -69,15 +69,16 @@ def preprocess_raw_columns(df_raw):
     Return:
     -------
     df: DataFrame
-        Columns (6): iid, dept_id, aisle_id, dept, aisle, prod
+        Columns (6): iid, department_id, aisle_id, department, aisle,
+        product_name
     """
     df = pd.DataFrame({
         'iid': df_raw.product_id,
-        'dept_id': df_raw.department_id,
+        'department_id': df_raw.department_id,
         'aisle_id': df_raw.aisle_id,
-        'dept': df_raw.department,
+        'department': df_raw.department,
         'aisle': df_raw.aisle,
-        'prod': df_raw.product_name,
+        'product_name': df_raw.product_name,
     })
     return df
 
@@ -132,9 +133,7 @@ class Products:
         """
         products_csv_path = get_products_csv_path(path_dir)
         with self._timer(f'Reading "{products_csv_path.name}" ...'):
-            df_raw = read_products_csv(products_csv_path)
-        with self._timer('  Preprocessing columns ...'):
-            self.df = preprocess_raw_columns(df_raw)
+            self.df = read_products_csv(products_csv_path)
         return self
 
     def __repr__(self):

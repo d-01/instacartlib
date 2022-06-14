@@ -1,10 +1,9 @@
 
 from instacartlib.Transactions import read_transactions_csv
-from instacartlib.Transactions import _update_iord
-from instacartlib.Transactions import _preprocess_raw_columns as trns_preprocess
+from instacartlib.transactions_utils import get_df_trns_from_raw
 
 from instacartlib.Products import read_products_csv
-from instacartlib.Products import preprocess_raw_columns as prods_preprocess
+from instacartlib.Products import _preprocess_raw_products as prods_preprocess
 
 import datetime
 import random
@@ -92,8 +91,7 @@ def df_trns_raw(transactions_csv_path):
 
 @pytest.fixture
 def df_trns(df_trns_raw):
-    df = trns_preprocess(df_trns_raw)
-    return _update_iord(df)
+    return get_df_trns_from_raw(df_trns_raw)
 
 
 @pytest.fixture

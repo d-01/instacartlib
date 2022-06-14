@@ -1,5 +1,6 @@
 
 from instacartlib.InstacartDataset import InstacartDataset
+from instacartlib.InstacartDataset import TestDataframes, TrainDataframes
 
 from instacartlib.Transactions import Transactions
 from instacartlib.Products import Products
@@ -9,6 +10,9 @@ import warnings
 import pandas as pd
 
 import pytest
+
+
+TestDataframes.__test__ = False  # pytest warns is class name starts with Test
 
 
 @pytest.fixture
@@ -36,109 +40,65 @@ def test_InstacartDataset_download(
 
 
 @pytest.fixture
+def required_ord_cols():
+    return {
+        'order_id',
+        'uid',
+        'days_since_prior_order',
+    }
+
+
+@pytest.fixture
 def required_trns_cols():
     return {
-        'oid',
+        'order_id',
         'uid',
-        'iord',
         'iid',
-        'reord',
-        # 'dow',
-        # 'hour',
-        'days_prev',
         'cart_pos',
     }
 
 
 @pytest.fixture
-def n_trns_cols(required_trns_cols):
-    return len(required_trns_cols)
-
-
-def test_InstacartDataset_train_default_usage(test_data_dir, required_trns_cols,
-        n_trns, n_trns_cols):
-    icds = InstacartDataset(verbose=1)
-    assert type(icds.df_trns) == pd.DataFrame
-    assert type(icds.df_prod) == pd.DataFrame
-    assert type(icds.df_trns_target) == pd.DataFrame
-    assert icds.df_trns.shape == (0, 0)
-    assert icds.df_prod.shape == (0, 0)
-    assert icds.df_trns_target.shape == (0, 0)
-    assert icds.get_dataframes() == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-    }
-    assert icds.dataframes == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-    }
-
-    icds.read_dir(test_data_dir)
-    assert type(icds.df_trns) == pd.DataFrame
-    assert type(icds.df_prod) == pd.DataFrame
-    assert type(icds.df_trns_target) == pd.DataFrame
-    assert icds.df_trns_target.shape == (0, 0)
-    assert icds.df_trns.shape == (n_trns, n_trns_cols)
-    assert required_trns_cols - set(icds.df_trns.columns) == set()
-    df_orders_uid_1 = icds.df_trns[icds.df_trns.uid == 1].drop_duplicates('oid')
-    assert (df_orders_uid_1.iord.to_list() == [9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
-    assert icds.df_prod.shape == (577, 6)
-    assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
-        'dept', 'aisle', 'prod']
-    assert icds.get_dataframes() == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-    }
-    assert icds.dataframes == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
+def required_prod_cols():
+    return {
+        'iid',
     }
 
 
-def test_InstacartDataset_train_true_usage(test_data_dir, n_trns, n_trns_cols,
-        n_trns_target, required_trns_cols):
-    icds = InstacartDataset(train=True, verbose=1)
-    assert type(icds.df_trns) == pd.DataFrame
-    assert type(icds.df_prod) == pd.DataFrame
-    assert type(icds.df_trns_target) == pd.DataFrame
-    assert icds.df_trns.shape == (0, 0)
-    assert icds.df_prod.shape == (0, 0)
-    assert icds.df_trns_target.shape == (0, 0)
-    assert icds.get_dataframes() == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-        'df_trns_target': icds.df_trns_target,
-    }
-    assert icds.dataframes == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-        'df_trns_target': icds.df_trns_target,
-    }
+def test_InstacartDataset_init():
+    inst = InstacartDataset()
+    dataframes = ['df_ord', 'df_trns', 'df_trns_target', 'df_prod']
+    for name in dataframes:
+        df = getattr(inst, name)
+        assert type(df) == pd.DataFrame
+        assert df.shape == (0, 0)
 
-    icds.read_dir(test_data_dir)
-    assert type(icds.df_trns) == pd.DataFrame
-    assert type(icds.df_prod) == pd.DataFrame
-    assert type(icds.df_trns_target) == pd.DataFrame
-    assert icds.df_trns.shape == (n_trns - n_trns_target, n_trns_cols)
-    assert required_trns_cols - set(icds.df_trns.columns) == set()
-    df_orders_uid_1 = icds.df_trns[icds.df_trns.uid == 1].drop_duplicates('oid')
-    assert (df_orders_uid_1.iord.to_list() == [8, 7, 6, 5, 4, 3, 2, 1, 0])
-    assert icds.df_prod.shape == (577, 6)
-    assert icds.df_prod.columns.to_list() == ['iid', 'dept_id', 'aisle_id',
-        'dept', 'aisle', 'prod']
-    assert icds.df_trns_target.shape == (n_trns_target, n_trns_cols)
-    assert required_trns_cols - set(icds.df_trns_target.columns) == set()
-    assert (icds.df_trns_target.iord == 0).all()
-    assert icds.get_dataframes() == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-        'df_trns_target': icds.df_trns_target,
-    }
-    assert icds.dataframes == {
-        'df_trns': icds.df_trns,
-        'df_prod': icds.df_prod,
-        'df_trns_target': icds.df_trns_target,
-    }
+
+def test_InstacartDataset_train_default_read_dir(test_data_dir,
+        required_trns_cols, required_ord_cols, required_prod_cols, n_trns,
+        n_trns_target):
+    inst = InstacartDataset().read_dir(test_data_dir)
+    assert required_ord_cols - set(inst.df_ord.columns) == set()
+    assert required_trns_cols - set(inst.df_trns.columns) == set()
+    assert required_trns_cols - set(inst.df_trns_target.columns) == set()
+    assert required_prod_cols - set(inst.df_prod.columns) == set()
+
+    assert len(inst.df_trns) == n_trns
+    assert len(inst.df_trns_target) == 0
+
+
+def test_InstacartDataset_train_true_read_dir(test_data_dir,
+        required_trns_cols, required_ord_cols, required_prod_cols, n_trns,
+        n_trns_target):
+    inst = InstacartDataset(train=True).read_dir(test_data_dir)
+    assert required_ord_cols - set(inst.df_ord.columns) == set()
+    assert required_trns_cols - set(inst.df_trns.columns) == set()
+    assert required_trns_cols - set(inst.df_trns_target.columns) == set()
+    assert required_prod_cols - set(inst.df_prod.columns) == set()
+
+    assert len(inst.df_trns) == n_trns - n_trns_target
+    assert len(inst.df_trns_target) == n_trns_target
+
 
 def test_InstacartDataset_repr():
     InstacartDataset_repr = repr(InstacartDataset())
@@ -156,3 +116,21 @@ def test_InstacartDataset_info(capsys):
     out, err = capsys.readouterr()
     assert out != ''
     assert err == ''
+
+
+def test_InstacartDataset_print_text_indent(capsys):
+    inst = InstacartDataset(verbose=1)
+    capsys.readouterr()
+    inst._print('abc\nxyz', indent=2)
+    out, err = capsys.readouterr()
+    assert out == '  abc\n  xyz\n'
+    assert err == ''
+
+
+def test_InstacartDataset_dataframes():
+    inst = InstacartDataset(train=False)
+    assert type(inst.dataframes) == TestDataframes
+
+    inst = InstacartDataset(train=True)
+    assert type(inst.dataframes) == TrainDataframes
+
