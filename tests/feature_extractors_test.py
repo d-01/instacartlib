@@ -7,45 +7,58 @@ import pandas as pd
 import pytest
 
 
-TRANSACTIONS_CSV = '''\
-  oid     uid  iord     iid  reord  dow  hour  days_prev  cart_pos
-ord_A  user_A     1  item_B      0    1    16          0         1
-ord_A  user_A     1  item_A      0    1    16          0         2
-ord_E  user_A     0  item_A      1    4     8         30         1
-ord_E  user_A     0  item_C      0    4     8         30         2
-ord_C  user_B     1  item_C      0    4    11         30         1
-ord_C  user_B     1  item_D      0    4    11         30         2
-ord_D  user_B     0  item_C      0    3    10         13         1
-ord_D  user_B     0  item_A      1    3    10         13         2
+DF_ORD = '''\
+order_id     uid  order_n  order_dow  order_hour_of_day  days_since_prior_order
+   ord_A  user_A        1          1                 16                       0
+   ord_E  user_A        0          4                  8                      30
+   ord_C  user_B        1          4                 11                      30
+   ord_D  user_B        0          3                 10                      13
 '''
 
-PRODUCTS_CSV = '''\
-   iid  dept_id  aisle_id    dept    aisle       product
-item_A        1         1  dept A  aisle A  product name
-item_B        1         1  dept A  aisle A  product name
-item_C        1         2  dept A  aisle B  product name
-item_D        2         3  dept B  aisle C  product name
-item_E        2         4  dept B  aisle D  product name
+DF_TRNS = '''\
+order_id     uid     iid  cart_pos  is_reordered  days_until_same_item
+   ord_A  user_A  item_B         1             0                  60.0
+   ord_A  user_A  item_A         2             0                  30.0
+   ord_E  user_A  item_A         1             1                  30.0
+   ord_E  user_A  item_C         2             0                  30.0
+   ord_C  user_B  item_C         1             0                  13.0
+   ord_C  user_B  item_D         2             0                  36.5
+   ord_D  user_B  item_C         1             0                  23.5
+   ord_D  user_B  item_A         2             1                  23.5
+'''
+
+DF_PROD = '''\
+   iid  department_id  aisle_id  department    aisle  product_name
+item_A              1         1      dept A  aisle A  product name
+item_B              1         1      dept A  aisle A  product name
+item_C              1         2      dept A  aisle B  product name
+item_D              2         3      dept B  aisle C  product name
+item_E              2         4      dept B  aisle D  product name
 '''
 
 
 @pytest.fixture
-def df_trns_1():
-    return pd.read_fwf(io.StringIO(TRANSACTIONS_CSV))
+def df_ord():
+    return pd.read_csv(io.StringIO(DF_ORD), sep=r'\s+')
 
 
 @pytest.fixture
-def df_trns_target_1(df_trns_1):
-    return df_trns_1[df_trns_1.iord == 0]
+def df_trns():
+    return pd.read_csv(io.StringIO(DF_TRNS), sep=r'\s+')
 
 
 @pytest.fixture
-def df_prod_1():
-    return pd.read_fwf(io.StringIO(PRODUCTS_CSV))
+def df_trns_target(df_trns):
+    return df_trns[df_trns.order_id.isin(['ord_E', 'ord_D'])]
 
 
 @pytest.fixture
-def ui_index_1():
+def df_prod():
+    return pd.read_csv(io.StringIO(DF_PROD), sep=r'\s+')
+
+
+@pytest.fixture
+def ui_index():
     return pd.read_fwf(io.StringIO('''
            uid     iid
         user_A  item_A
@@ -62,63 +75,48 @@ def ui_index_1():
 
 
 @pytest.fixture
-def dataframes_1(df_trns_1, df_prod_1):
+def dataframes(df_ord, df_trns, df_prod):
     return dict(
-        df_trns=df_trns_1,
-        df_prod=df_prod_1,
+        df_ord=df_ord,
+        df_trns=df_trns,
+        df_prod=df_prod,
     )
 
 
 @pytest.fixture
-def dataframes_target_1(df_trns_1, df_prod_1, df_trns_target_1):
+def dataframes_target(df_ord, df_trns, df_prod, df_trns_target):
     return dict(
-        df_trns=df_trns_1,
-        df_trns_target=df_trns_target_1,
-        df_prod=df_prod_1,
+        df_ord=df_ord,
+        df_trns=df_trns,
+        df_trns_target=df_trns_target,
+        df_prod=df_prod,
     )
 
 
-
 @pytest.mark.parametrize("extractor_name", feature_extractors.keys())
-def test_feature_extractors_output_valid(extractor_name, ui_index_1,
-        dataframes_target_1):
+def test_feature_extractors_output_valid(extractor_name, ui_index,
+        dataframes_target):
     function = feature_extractors[extractor_name]
-    test_output = function(ui_index_1, **dataframes_target_1)
-    pd.testing.assert_index_equal(test_output.index, ui_index_1)
+    test_output = function(ui_index, **dataframes_target)
+    pd.testing.assert_index_equal(test_output.index, ui_index)
     assert test_output.isna().values.sum() == 0
 
     with pytest.raises(TypeError,
             match=r'missing \d+ required positional argument'):
         test_output = function()
 
-    extra_dataframes = {'unused_1': 1, 'unused_2': 2, **dataframes_target_1}
-    test_output = function(ui_index_1, **extra_dataframes)
-
+    extra_dataframes = {'unused_1': 1, 'unused_2': 2, **dataframes_target}
+    test_output = function(ui_index, **extra_dataframes)
 
 
 @pytest.mark.skipif(
     '001_ui_freq.freq' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_ui_freq(ui_index, dataframes, uids, iids):
+def test_ui_freq(ui_index, dataframes):
     freq = feature_extractors['001_ui_freq.freq']
 
     test_output = freq(ui_index, **dataframes)
-    assert type(test_output) == pd.DataFrame
-    assert test_output.columns == ['freq']
-    assert (test_output.freq.loc[uids[0], iids[[0, 1, 2]]].to_list()
-        == [10, 1, 10])
-    pd.testing.assert_index_equal(test_output.index, ui_index)
-
-
-@pytest.mark.skipif(
-    '001_ui_freq.freq' not in feature_extractors,
-    reason="feature extractor was not registered",
-)
-def test_ui_freq__1(ui_index_1, dataframes_1):
-    freq = feature_extractors['001_ui_freq.freq']
-
-    test_output = freq(ui_index_1, **dataframes_1)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  freq
         user_A  item_A     2
@@ -139,25 +137,10 @@ def test_ui_freq__1(ui_index_1, dataframes_1):
     '002_ui_avg_cart_pos.avg_cart_pos' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_avg_cart_pos(ui_index, dataframes, uids, iids):
+def test_avg_cart_pos(ui_index, dataframes):
     avg_cart_pos = feature_extractors['002_ui_avg_cart_pos.avg_cart_pos']
 
-    out = avg_cart_pos(ui_index, **dataframes)
-    assert type(out) == pd.DataFrame
-    assert 'avg_cart_pos' in out.columns
-    assert (out['avg_cart_pos'].loc[uids[0], iids[[0, 1, 2]]].to_list()
-        == [1.4, 2.0, 3.3])
-    pd.testing.assert_index_equal(out.index, ui_index)
-
-
-@pytest.mark.skipif(
-    '002_ui_avg_cart_pos.avg_cart_pos' not in feature_extractors,
-    reason="feature extractor was not registered",
-)
-def test_avg_cart_pos__1(ui_index_1, dataframes_1):
-    avg_cart_pos = feature_extractors['002_ui_avg_cart_pos.avg_cart_pos']
-
-    test_output = avg_cart_pos(ui_index_1, **dataframes_1)
+    test_output = avg_cart_pos(ui_index, **dataframes)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  avg_cart_pos
         user_A  item_A           1.5
@@ -178,10 +161,10 @@ def test_avg_cart_pos__1(ui_index_1, dataframes_1):
     '000_ui_in_target.in_target' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_in_target__1(ui_index_1, dataframes_target_1):
+def test_in_target(ui_index, dataframes_target):
     in_target = feature_extractors['000_ui_in_target.in_target']
 
-    test_output = in_target(ui_index_1, **dataframes_target_1)
+    test_output = in_target(ui_index, **dataframes_target)
     expected = pd.read_fwf(io.StringIO('''
            uid     iid  in_target
         user_A  item_A          1
