@@ -12,6 +12,9 @@ Capabilities:
 from .Transactions import Transactions
 from .transactions_utils import get_df_trns_from_raw
 from .transactions_utils import split_last_order
+from .transactions_utils import get_order_days_until_target
+from .transactions_utils import get_days_until_same_item
+from .transactions_utils import split_last_order
 from .Products import Products
 from .Products import _preprocess_raw_products
 from .utils import get_df_info, format_size, get_df_size_bytes
@@ -32,8 +35,8 @@ COLUMNS_INCLUDE_INTO_TRNS = [
 
 COLUMNS_INCLUDE_INTO_ORDERS = [
     'order_id',
-    'order_number',
     'uid',
+    'order_n',
     'order_dow',
     'order_hour_of_day',
     'days_since_prior_order',
@@ -151,6 +154,8 @@ class InstacartDataset:
         self._print('Products preprocessing ...', indent=2)
         self._preprocess_raw_products()
 
+        self._print('Updating dynamic columns ...', indent=2)
+        self._update_dynamic_columns()
         self._update_stats()
         return self
 
@@ -166,6 +171,20 @@ class InstacartDataset:
             verbose=self.verbose)
 
 
+    def _update_dynamic_columns(self):
+        self._update_days_until_same_item()
+
+
+    def _update_days_until_same_item(self):
+        order_days_until_target = get_order_days_until_target(self.df_ord)
+        df_trns_days_until_target = self.df_trns.join(order_days_until_target,
+            on='order_id')
+
+        srs_days_until_target = get_days_until_same_item(
+            df_trns_days_until_target)
+        self.df_trns = self.df_trns.join(srs_days_until_target)
+
+
     def info(self):
         total_memory = sum([
             get_df_size_bytes(self.df_ord),
@@ -175,7 +194,7 @@ class InstacartDataset:
         ])
 
         info_message = [
-            f'Raw data:                                ',
+            f'Dataframes ({format_size(total_memory)}):',
             f'    df_ord: {get_df_info(self.df_ord)} ',
             f'        max order history: {self.n_ord_user_max}',
             f'    df_trns: {get_df_info(self.df_trns)} ',
@@ -188,9 +207,6 @@ class InstacartDataset:
             f'    df_trns_target: {get_df_info(self.df_trns_target)} ',
             f'        users: {self.n_users_target}            ',
             f'        items: {self.n_items_target}            ',
-            f'                                         ',
-            f'Total memory:                            ',
-            f'    {format_size(total_memory)}          ',
         ]
         print(*info_message, sep='\n')
         return self

@@ -33,7 +33,7 @@ order_id,user_id,order_number,order_dow,order_hour_of_day,days_since_prior_order
 """
 
 DF_TRNS = '''\
-order_id  uid  order_n  iid  is_reordered  order_dow  order_hour_of_day  days_since_prior_order  cart_pos  days_until_last  days_until_same_item
+order_id  uid  order_n  iid  is_reordered  order_dow  order_hour_of_day  days_since_prior_order  cart_pos  days_until_target  days_until_same_item
 ord_2  user_A  1  item_B  0  0  0  -1  1  9  6
 ord_2  user_A  1  item_A  0  0  0  -1  2  9  4
 ord_3  user_A  2  item_A  1  0  0   4  1  5  2
@@ -44,6 +44,17 @@ ord_8  user_B  1  item_B  0  0  0  -1  1  4  4
 ord_8  user_B  1  item_C  0  0  0  -1  2  4  3
 ord_9  user_B  2  item_C  1  0  0   3  1  1  1
 ord_0  user_B  3  item_C  1  0  0   1  1  0  0
+'''
+
+DF_ORD = '''\
+order_id  uid  order_n  order_dow  order_hour_of_day  days_since_prior_order  days_until_target
+ord_2  user_A  1  0  0  -1  9
+ord_3  user_A  2  0  0   4  5
+ord_4  user_A  3  0  0   2  3
+ord_5  user_A  4  0  0   3  0
+ord_8  user_B  1  0  0  -1  4
+ord_9  user_B  2  0  0   3  1
+ord_0  user_B  3  0  0   1  0
 '''
 
 
@@ -57,6 +68,17 @@ def df_trns(df_trns_all_columns):
     return df_trns_all_columns[['order_id', 'uid', 'order_n', 'iid',
         'is_reordered', 'order_dow', 'order_hour_of_day',
         'days_since_prior_order', 'cart_pos']]
+
+
+@pytest.fixture
+def df_ord_all_columns():
+    return pd.read_csv(io.StringIO(DF_ORD), sep=r'\s+')
+
+
+@pytest.fixture
+def df_ord(df_ord_all_columns):
+    return df_ord_all_columns[['order_id', 'uid', 'order_n', 'order_dow',
+        'order_hour_of_day', 'days_since_prior_order']]
 
 
 @pytest.fixture
@@ -152,7 +174,7 @@ def test_split_last_order():
     assert output[1].row_id.to_list() == [4, 5, 9]
 
 
-def test_get_order_days_until_last(df_trns):
+def test_get_order_days_until_last(df_ord):
     # days_since_prior_order
     # -------------------
     # order_n  1  2  3  4
@@ -173,7 +195,7 @@ def test_get_order_days_until_last(df_trns):
     # uid
     # user_A   9  5  3  0
     # user_B   4  1  0
-    output = get_order_days_until_last(df_trns)
+    output = get_order_days_until_last(df_ord)
 
     assert type(output) == pd.Series
 
@@ -186,8 +208,8 @@ def test_get_order_days_until_last(df_trns):
     pd.testing.assert_series_equal(output, expected_output, check_dtype=False)
 
 
-def test_get_order_days_until_target(df_trns):
-    output = get_order_days_until_target(df_trns)
+def test_get_order_days_until_target(df_ord):
+    output = get_order_days_until_target(df_ord)
 
     assert type(output) == pd.Series
 
@@ -196,7 +218,7 @@ def test_get_order_days_until_target(df_trns):
     expected_output = pd.Series([
         12, 8, 6, 3,  # user_A's orders
          6, 3, 2,     # user_B's orders
-    ], index=index, name="days_until_last")
+    ], index=index, name="days_until_target")
     pd.testing.assert_series_equal(output, expected_output, check_dtype=False)
 
 
@@ -230,8 +252,8 @@ def test_get_days_until_same_item(df_trns_all_columns):
     )
 
 
-def test_get_user_days_between_orders_mid(df_trns):
-    output = get_user_days_between_orders_mid(df_trns)
+def test_get_user_days_between_orders_mid(df_ord):
+    output = get_user_days_between_orders_mid(df_ord)
     expected = pd.Series({
         'user_A': 3,  # median([4, 2, 3])
         'user_B': 2,  # median([3, 1])

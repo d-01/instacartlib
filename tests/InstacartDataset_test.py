@@ -44,6 +44,7 @@ def required_ord_cols():
     return {
         'order_id',
         'uid',
+        'order_n',
         'days_since_prior_order',
     }
 
