@@ -141,6 +141,7 @@ class InstacartDataset:
 
         self._print('Updating dynamic columns ...', indent=2)
         self._update_dynamic_columns()
+        self._print('Updating stats ...', indent=2)
         self._update_stats()
         return self
 
@@ -157,7 +158,15 @@ class InstacartDataset:
 
 
     def _update_dynamic_columns(self):
+        self._update_order_rn()
         self._update_days_until_same_item()
+
+
+    def _update_order_rn(self):
+        # cumcount starts from 0
+        order_r = self.df_ord.groupby('uid').cumcount(ascending=False) + 1
+        order_r = order_r.astype('uint8').rename('order_r')
+        self.df_trns = self.df_trns.join(order_r, on='uid')
 
 
     def _update_days_until_same_item(self):

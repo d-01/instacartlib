@@ -10,22 +10,34 @@ import pytest
 DF_ORD = '''\
 order_id     uid  order_n  order_dow  order_hour_of_day  days_since_prior_order
    ord_A  user_A        1          1                 16                       0
-   ord_E  user_A        0          4                  8                      30
+   ord_E  user_A        2          4                  8                      30
    ord_C  user_B        1          4                 11                      30
-   ord_D  user_B        0          3                 10                      13
+   ord_D  user_B        2          3                 10                      13
 '''
 
 DF_TRNS = '''\
-order_id     uid     iid  cart_pos  is_reordered  days_until_same_item
-   ord_A  user_A  item_B         1             0                  60.0
-   ord_A  user_A  item_A         2             0                  30.0
-   ord_E  user_A  item_A         1             1                  30.0
-   ord_E  user_A  item_C         2             0                  30.0
-   ord_C  user_B  item_C         1             0                  13.0
-   ord_C  user_B  item_D         2             0                  36.5
-   ord_D  user_B  item_C         1             0                  23.5
-   ord_D  user_B  item_A         2             1                  23.5
+order_id     uid     iid  cart_pos  is_reordered  order_r  days_until_same_item
+   ord_A  user_A  item_B         1             0        2                  45.0
+   ord_A  user_A  item_A         2             0        2                  30.0
+   ord_E  user_A  item_A         1             1        1                  15.0
+   ord_E  user_A  item_C         2             0        1                  15.0
+   ord_C  user_B  item_C         1             0        2                  13.0
+   ord_C  user_B  item_D         2             0        2                  36.5
+   ord_D  user_B  item_C         1             0        1                  23.5
+   ord_D  user_B  item_A         2             1        1                  23.5
 '''
+
+# days_since_prior_order
+# ---------------------
+# order_n         1   2
+# uid    iid
+# user_A item_A   0  30
+#        item_B   0   .
+#        item_C   .  30
+# user_B item_A   .  13
+#        item_C  30  13
+#        item_D  30   .
+
 
 DF_PROD = '''\
    iid  department_id  aisle_id  department    aisle  product_name
@@ -65,12 +77,10 @@ def ui_index():
         user_A  item_B
         user_A  item_C
         user_A  item_D
-        user_A  item_E
         user_B  item_A
         user_B  item_B
         user_B  item_C
         user_B  item_D
-        user_B  item_E
     ''')).set_index(['uid', 'iid']).index
 
 
@@ -110,27 +120,25 @@ def test_feature_extractors_output_valid(extractor_name, ui_index,
 
 
 @pytest.mark.skipif(
-    '001_ui_freq.freq' not in feature_extractors,
+    '001_ui_buy_counts.buy_counts' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_ui_freq(ui_index, dataframes):
-    freq = feature_extractors['001_ui_freq.freq']
+def test_ui_buy_counts(ui_index, dataframes):
+    freq = feature_extractors['001_ui_buy_counts.buy_counts']
 
     test_output = freq(ui_index, **dataframes)
-    expected = pd.read_fwf(io.StringIO('''
-           uid     iid  freq
-        user_A  item_A     2
-        user_A  item_B     1
-        user_A  item_C     1
-        user_A  item_D     0
-        user_A  item_E     0
-        user_B  item_A     1
-        user_B  item_B     0
-        user_B  item_C     2
-        user_B  item_D     1
-        user_B  item_E     0
-    ''')).set_index(['uid', 'iid'])
-    pd.testing.assert_frame_equal(test_output, expected)
+    expected = pd.read_csv(io.StringIO('''
+           uid  iid  n_orders  n_chances  total_buy  total_buy_ratio  chance_buy_ratio
+        user_A  item_A  2  2  2  1.0  1.0
+        user_A  item_B  2  2  1  0.5  0.5
+        user_A  item_C  2  1  1  0.5  1.0
+        user_A  item_D  2  0  0  0.0  0.0
+        user_B  item_A  2  1  1  0.5  1.0
+        user_B  item_B  2  0  0  0.0  0.0
+        user_B  item_C  2  2  2  1.0  1.0
+        user_B  item_D  2  2  1  0.5  0.5
+    '''), sep=r'\s+').set_index(['uid', 'iid'])
+    pd.testing.assert_frame_equal(test_output, expected, check_dtype=False)
 
 
 @pytest.mark.skipif(
@@ -147,13 +155,11 @@ def test_avg_cart_pos(ui_index, dataframes):
         user_A  item_B           1.0
         user_A  item_C           2.0
         user_A  item_D         999.0
-        user_A  item_E         999.0
         user_B  item_A           2.0
         user_B  item_B         999.0
         user_B  item_C           1.0
         user_B  item_D           2.0
-        user_B  item_E         999.0
-    ''')).set_index(['uid', 'iid'])
+    ''')).set_index(['uid', 'iid']).astype('float32')
     pd.testing.assert_frame_equal(test_output, expected)
 
 
@@ -171,11 +177,32 @@ def test_in_target(ui_index, dataframes_target):
         user_A  item_B          0
         user_A  item_C          1
         user_A  item_D          0
-        user_A  item_E          0
         user_B  item_A          1
         user_B  item_B          0
         user_B  item_C          1
         user_B  item_D          0
-        user_B  item_E          0
-    ''')).set_index(['uid', 'iid'])
+    ''')).set_index(['uid', 'iid']).astype('uint8')
     pd.testing.assert_frame_equal(test_output, expected)
+
+
+@pytest.mark.skipif(
+    '003_ui_buy_delays.buy_delays' not in feature_extractors,
+    reason="feature extractor was not registered",
+)
+def test_buy_delays(ui_index, dataframes_target):
+    buy_delays = feature_extractors['003_ui_buy_delays.buy_delays']
+
+    test_output = buy_delays(ui_index, **dataframes_target)
+    expected = pd.read_csv(io.StringIO('''
+           uid     iid  days_delay_max  days_delay_mid  days_passed  readyness_max  readyness_max_abs  readyness_mid  readyness_mid_abs
+        user_A  item_A   30.0   22.50   15.0  -15.0  15.0  -7.50  7.50
+        user_A  item_B   45.0   45.00   45.0    0.0   0.0   0.00  0.00
+        user_A  item_C   15.0   15.00   15.0    0.0   0.0   0.00  0.00
+        user_A  item_D  999.0  999.00  999.0    0.0   0.0   0.00  0.00
+        user_B  item_A   23.5   23.50   23.5    0.0   0.0   0.00  0.00
+        user_B  item_B  999.0  999.00  999.0    0.0   0.0   0.00  0.00
+        user_B  item_C   23.5   18.25   23.5    0.0   0.0   5.25  5.25
+        user_B  item_D   36.5   36.50   36.5    0.0   0.0   0.00  0.00
+    '''), sep=r'\s+').set_index(['uid', 'iid']).astype('float32')
+    pd.testing.assert_frame_equal(test_output, expected)
+
