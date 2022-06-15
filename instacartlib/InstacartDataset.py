@@ -19,8 +19,6 @@ from .Products import Products
 from .Products import _preprocess_raw_products
 from .utils import get_df_info, format_size, get_df_size_bytes
 
-from typing import NamedTuple
-
 import numpy as np
 import pandas as pd
 
@@ -58,19 +56,6 @@ def _preprocess_raw_transactions(df_raw, create_target=False, verbose=0):
     return (df_ord, df_trns, df_trns_target)
 
 
-class TestDataframes(NamedTuple):
-    ord: pd.DataFrame
-    trns: pd.DataFrame
-    prod: pd.DataFrame
-
-
-class TrainDataframes(NamedTuple):
-    ord: pd.DataFrame
-    trns: pd.DataFrame
-    trns_target: pd.DataFrame
-    prod: pd.DataFrame
-
-
 class InstacartDataset:
     """
     train : {False, True}
@@ -101,18 +86,18 @@ class InstacartDataset:
 
     def get_dataframes(self):
         if self.train:
-            return TrainDataframes(
-                self.df_ord,
-                self.df_trns,
-                self.df_trns_target,
-                self.df_prod,
-            )
+            return {
+                'df_ord':         self.df_ord,
+                'df_trns':        self.df_trns,
+                'df_trns_target': self.df_trns_target,
+                'df_prod':        self.df_prod,
+            }
         else:
-            return TestDataframes(
-                self.df_ord,
-                self.df_trns,
-                self.df_prod,
-            )
+            return {
+                'df_ord':  self.df_ord,
+                'df_trns': self.df_trns,
+                'df_prod': self.df_prod,
+            }
 
 
     @property

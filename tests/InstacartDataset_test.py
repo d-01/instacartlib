@@ -1,6 +1,5 @@
 
 from instacartlib.InstacartDataset import InstacartDataset
-from instacartlib.InstacartDataset import TestDataframes, TrainDataframes
 
 from instacartlib.Transactions import Transactions
 from instacartlib.Products import Products
@@ -10,9 +9,6 @@ import warnings
 import pandas as pd
 
 import pytest
-
-
-TestDataframes.__test__ = False  # pytest warns is class name starts with Test
 
 
 @pytest.fixture
@@ -128,10 +124,22 @@ def test_InstacartDataset_print_text_indent(capsys):
     assert err == ''
 
 
-def test_InstacartDataset_dataframes():
+def test_InstacartDataset_train_default_dataframes():
     inst = InstacartDataset(train=False)
-    assert type(inst.dataframes) == TestDataframes
+    dataframes = inst.dataframes
+    assert type(dataframes) == dict
+    assert 'df_ord' in dataframes
+    assert 'df_trns' in dataframes
+    assert 'df_prod' in dataframes
+    assert 'df_trns_target' not in dataframes
 
+
+def test_InstacartDataset_train_true_dataframes():
     inst = InstacartDataset(train=True)
-    assert type(inst.dataframes) == TrainDataframes
+    dataframes = inst.dataframes
+    assert type(dataframes) == dict
+    assert 'df_ord' in dataframes
+    assert 'df_trns' in dataframes
+    assert 'df_prod' in dataframes
+    assert 'df_trns_target' in dataframes
 
