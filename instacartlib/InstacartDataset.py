@@ -35,8 +35,8 @@ COLUMNS_INCLUDE_INTO_ORDERS = [
     'order_id',
     'uid',
     'order_n',
-    'order_dow',
-    'order_hour_of_day',
+    #'order_dow',
+    #'order_hour_of_day',
     'days_since_prior_order',
 ]
 
@@ -52,6 +52,7 @@ def _preprocess_raw_transactions(df_raw, create_target=False, verbose=0):
     df_trns_target = df_trns[:0]
     if create_target:
         df_trns, df_trns_target = split_last_order(df_trns)
+        df_ord = df_ord[df_ord.order_id.isin(df_trns.order_id.unique())]
 
     return (df_ord, df_trns, df_trns_target)
 
@@ -158,15 +159,21 @@ class InstacartDataset:
 
 
     def _update_dynamic_columns(self):
-        self._update_order_rn()
+        self._update_order_r()
         self._update_days_until_same_item()
 
 
-    def _update_order_rn(self):
+    def _update_order_r(self):
         # cumcount starts from 0
-        order_r = self.df_ord.groupby('uid').cumcount(ascending=False) + 1
+        order_r = (
+            self.df_ord
+            .set_index('order_id')
+            .groupby('uid')
+            .cumcount(ascending=False)
+        )
+        order_r += 1
         order_r = order_r.astype('uint8').rename('order_r')
-        self.df_trns = self.df_trns.join(order_r, on='uid')
+        self.df_trns = self.df_trns.join(order_r, on='order_id')
 
 
     def _update_days_until_same_item(self):

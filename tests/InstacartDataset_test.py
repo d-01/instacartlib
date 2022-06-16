@@ -11,6 +11,12 @@ import pandas as pd
 import pytest
 
 
+def is_reverse_count(seq, start=0):
+    lseq = list(seq)
+    reverse_count = list(range(start, len(lseq) + start))[::-1]
+    return lseq == reverse_count
+
+
 @pytest.fixture
 def transactions_load_from_gdrive_patch(monkeypatch, has_been_called):
     def load_from_gdrive(self, to_dir):
@@ -62,6 +68,16 @@ def required_prod_cols():
     }
 
 
+@pytest.fixture
+def inst_train_false_loaded(test_data_dir):
+    return InstacartDataset(train=False).read_dir(test_data_dir)
+
+
+@pytest.fixture
+def inst_train_loaded(test_data_dir):
+    return InstacartDataset(train=True).read_dir(test_data_dir)
+
+
 def test_InstacartDataset_init():
     inst = InstacartDataset()
     dataframes = ['df_ord', 'df_trns', 'df_trns_target', 'df_prod']
@@ -71,10 +87,10 @@ def test_InstacartDataset_init():
         assert df.shape == (0, 0)
 
 
-def test_InstacartDataset_train_default_read_dir(test_data_dir,
-        required_trns_cols, required_ord_cols, required_prod_cols, n_trns,
-        n_trns_target):
-    inst = InstacartDataset().read_dir(test_data_dir)
+def test_InstacartDataset_train_false_dataframes_shapes(
+        inst_train_false_loaded, required_trns_cols,
+        required_ord_cols, required_prod_cols, n_trns, n_trns_target):
+    inst = inst_train_false_loaded
     assert required_ord_cols - set(inst.df_ord.columns) == set()
     assert required_trns_cols - set(inst.df_trns.columns) == set()
     assert required_trns_cols - set(inst.df_trns_target.columns) == set()
@@ -82,12 +98,27 @@ def test_InstacartDataset_train_default_read_dir(test_data_dir,
 
     assert len(inst.df_trns) == n_trns
     assert len(inst.df_trns_target) == 0
+    assert len(inst.df_ord) != 0
+    assert len(inst.df_prod) != 0
 
 
-def test_InstacartDataset_train_true_read_dir(test_data_dir,
+def test_InstacartDataset_train_false_preprocess(inst_train_false_loaded):
+    inst = inst_train_false_loaded
+    assert (set(inst.df_trns.order_id.unique())
+        == set(inst.df_ord.order_id.unique()))
+
+    u1_uid = inst.df_trns.uid.values[0]
+    u1_orders = (inst
+        .df_trns[inst.df_trns.uid==u1_uid]
+        .drop_duplicates('order_id')
+    )
+    assert is_reverse_count(u1_orders.order_r, start=1)
+
+
+def test_InstacartDataset_train_true_dataframes_shapes(inst_train_loaded,
         required_trns_cols, required_ord_cols, required_prod_cols, n_trns,
         n_trns_target):
-    inst = InstacartDataset(train=True).read_dir(test_data_dir)
+    inst = inst_train_loaded
     assert required_ord_cols - set(inst.df_ord.columns) == set()
     assert required_trns_cols - set(inst.df_trns.columns) == set()
     assert required_trns_cols - set(inst.df_trns_target.columns) == set()
@@ -95,6 +126,26 @@ def test_InstacartDataset_train_true_read_dir(test_data_dir,
 
     assert len(inst.df_trns) == n_trns - n_trns_target
     assert len(inst.df_trns_target) == n_trns_target
+    assert len(inst.df_ord) != 0
+    assert len(inst.df_prod) != 0
+
+
+def test_InstacartDataset_train_true_preprocess(inst_train_loaded):
+    inst = inst_train_loaded
+    assert (set(inst.df_trns.order_id.unique())
+        == set(inst.df_ord.order_id.unique()))
+
+    u1_uid = inst.df_trns.uid.values[0]
+    u1_orders = (inst
+        .df_trns[inst.df_trns.uid==u1_uid]
+        .drop_duplicates('order_id')
+    )
+    assert is_reverse_count(u1_orders.order_r, start=1)
+
+
+def test_InstacartDataset_train_default():
+    inst = InstacartDataset()
+    assert inst.train == False
 
 
 def test_InstacartDataset_repr():
