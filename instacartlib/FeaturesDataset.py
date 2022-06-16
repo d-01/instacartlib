@@ -148,11 +148,11 @@ class FeaturesDataset:
                 'No feature extractors have been registered yet. '
                 'Use `register_feature_extractors()` method first.')
 
-        if 'df_trns' not in dataframes:
-            raise ValueError('`df_trns` is required to generate `ui_index` '
-                'automatically.')
-
         if not self._ui_index_created:
+            if 'df_trns' not in dataframes:
+                raise ValueError(
+                    '`df_trns` is required to generate `ui_index` '
+                    'automatically.')
             self._create_df_ui_index(dataframes['df_trns'])
 
         for extractor_name, function in self._feature_extractors.items():
