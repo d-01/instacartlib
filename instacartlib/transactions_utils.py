@@ -178,7 +178,7 @@ def get_n_last_orders(df_trns, n):
             .tail(n)
             .order_id
     )
-    return df_trns[df_trns.order_id.isin(last_order_ids)]
+    return df_trns[df_trns.order_id.isin(last_order_ids)].reset_index(drop=True)
 
 
 def get_order_days_until_last(df_ord):

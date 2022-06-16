@@ -10,7 +10,7 @@ Capabilities:
 """
 
 from .Transactions import Transactions
-from .transactions_utils import get_df_trns_from_raw
+from .transactions_utils import get_df_trns_from_raw, get_n_last_orders
 from .transactions_utils import split_last_order
 from .transactions_utils import get_order_days_until_target
 from .transactions_utils import get_days_until_same_item
@@ -41,18 +41,21 @@ COLUMNS_INCLUDE_INTO_ORDERS = [
 ]
 
 
-def _preprocess_raw_transactions(df_raw, create_target=False, verbose=0):
+def _preprocess_raw_transactions(df_raw, create_target=False,
+        n_orders_limit=None, verbose=0):
     df_trns = get_df_trns_from_raw(df_raw)
+
+    df_trns_target = df_trns[:0].copy()  # copy structure
+    if create_target:
+        df_trns, df_trns_target = split_last_order(df_trns)
+
+    df_trns = get_n_last_orders(df_trns, n=n_orders_limit)
+
     df_ord = (df_trns
         .drop_duplicates('order_id')
         .reset_index(drop=True)
         .filter(COLUMNS_INCLUDE_INTO_ORDERS))
     df_trns = df_trns.filter(COLUMNS_INCLUDE_INTO_TRNS)
-
-    df_trns_target = df_trns[:0]
-    if create_target:
-        df_trns, df_trns_target = split_last_order(df_trns)
-        df_ord = df_ord[df_ord.order_id.isin(df_trns.order_id.unique())]
 
     return (df_ord, df_trns, df_trns_target)
 
@@ -62,9 +65,12 @@ class InstacartDataset:
     train : {False, True}
         Set aside most recent order as target for target basket
         prediction task. These orders will be available as `df_trns_target`.
+    n_orders_limit: None or int
+        Limit transactions to n most recent orders.
     """
-    def __init__(self, train=False, verbose=0):
+    def __init__(self, train=False, n_orders_limit=None, verbose=0):
         self.train = train
+        self.n_orders_limit = n_orders_limit
         self.verbose = verbose
 
         self._transactions = Transactions(show_progress=self.verbose > 0)
@@ -148,8 +154,12 @@ class InstacartDataset:
 
 
     def _preprocess_raw_transactions(self):
-        frames = _preprocess_raw_transactions(self._transactions.df,
-            create_target=self.train, verbose=self.verbose)
+        frames = _preprocess_raw_transactions(
+            self._transactions.df,
+            create_target=self.train,
+            n_orders_limit=self.n_orders_limit,
+            verbose=self.verbose,
+        )
         (self.df_ord, self.df_trns, self.df_trns_target) = frames
 
 

@@ -5,6 +5,7 @@ from instacartlib.Transactions import Transactions
 from instacartlib.Products import Products
 
 import warnings
+import inspect
 
 import pandas as pd
 
@@ -78,6 +79,13 @@ def inst_train_loaded(test_data_dir):
     return InstacartDataset(train=True).read_dir(test_data_dir)
 
 
+@pytest.fixture
+def inst_train_n_order_limit_2_loaded(test_data_dir):
+    inst = InstacartDataset(train=True, n_orders_limit=2)
+    inst.read_dir(test_data_dir)
+    return inst
+
+
 def test_InstacartDataset_init():
     inst = InstacartDataset()
     dataframes = ['df_ord', 'df_trns', 'df_trns_target', 'df_prod']
@@ -127,6 +135,23 @@ def test_InstacartDataset_train_true_dataframes_shapes(inst_train_loaded,
     assert len(inst.df_trns) == n_trns - n_trns_target
     assert len(inst.df_trns_target) == n_trns_target
     assert len(inst.df_ord) != 0
+    assert len(inst.df_prod) != 0
+
+
+def test_InstacartDataset_n_order_limit(inst_train_n_order_limit_2_loaded,
+        n_trns_target):
+    inst = inst_train_n_order_limit_2_loaded
+
+    order_ids_two_most_recent = pd.Series(
+        [3108588, 2295261, 3186735, 3268552, 3160850, 676467])
+    order_ids_most_recent_3rd = pd.Series(
+        [550135, 1402090, 3225766])
+
+    assert order_ids_two_most_recent.isin(inst.df_trns.order_id).all() == True
+    assert order_ids_most_recent_3rd.isin(inst.df_trns.order_id).any() == False
+    assert order_ids_two_most_recent.isin(inst.df_ord.order_id).all() == True
+    assert order_ids_most_recent_3rd.isin(inst.df_ord.order_id).any() == False
+    assert len(inst.df_trns_target) == n_trns_target
     assert len(inst.df_prod) != 0
 
 
@@ -194,3 +219,13 @@ def test_InstacartDataset_train_true_dataframes():
     assert 'df_prod' in dataframes
     assert 'df_trns_target' in dataframes
 
+
+def test_InstacartDataset_read_dir_reduced_default():
+    read_dir_method = InstacartDataset.read_dir
+    reduced_default_arg_value = (
+        inspect
+        .signature(read_dir_method)
+        .parameters['reduced']
+        .default
+    )
+    assert reduced_default_arg_value == False

@@ -277,7 +277,7 @@ def test_get_n_last_orders_n_15():
     expected = pd.DataFrame({
         'order_id': range(15, 30),
         'uid': 'user_A',
-    }, index=range(15, 30))
+    })
     pd.testing.assert_frame_equal(output, expected)
 
 
