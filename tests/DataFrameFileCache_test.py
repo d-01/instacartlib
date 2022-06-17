@@ -24,8 +24,10 @@ def call_counter():
 
 
 def test_cache_disable_default(tmp_dir, call_counter, df):
-    cache_file_path = tmp_dir / 'df_cached.zip'
-    assert not cache_file_path.exists()
+    subdir = tmp_dir / 'sub1' / 'sub2'
+    assert not subdir.exists()
+
+    cache_file_path = subdir / 'df_cached.zip'
 
     @DataFrameFileCache(cache_file_path)
     def get_df():
@@ -69,3 +71,15 @@ def test_cache_disable_true(tmp_dir, call_counter, df):
     pd.testing.assert_frame_equal(output_2, df)
 
 
+def test_cache_non_existed_subdir(tmp_dir, call_counter, df):
+    subdir = tmp_dir / 'sub1' / 'sub2'
+    assert not subdir.exists()
+
+    cache_file_path = subdir / 'df_cached.zip'
+
+    @DataFrameFileCache(cache_file_path)
+    def get_df():
+        call_counter()
+        return df
+
+    get_df()

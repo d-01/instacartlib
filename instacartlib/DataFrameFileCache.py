@@ -14,9 +14,9 @@ import pandas as pd
 class DataFrameFileCache:
     """
     path: str or pathlib.Path
-        If the file exists read DataFrame from this file instead of 
+        If the file exists read DataFrame from this file instead of
         calling the wrapped function.
-        If the file doesn't exist call wrapped function and write the output 
+        If the file doesn't exist call wrapped function and write the output
         DataFrame to this file.
     disable: {False, True}
         If False wrapper has no effect (pass-through).
@@ -43,6 +43,9 @@ class DataFrameFileCache:
 
 
     def wrapper(self, *args, **kwargs):
+        if not self.path.parent.exists():
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+
         if not self.path.exists():
             self._print(f'Waiting result from {self.__wrapped__} ...')
             result = self.__wrapped__(*args, **kwargs)
