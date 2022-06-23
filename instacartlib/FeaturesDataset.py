@@ -200,10 +200,11 @@ class FeaturesDataset:
 
 
     def info(self):
+        cols = self.df_ui.columns.to_list()
         info_message = [
             f'Features:                                  ',
             f'    df_ui: {get_df_info(self.df_ui)}       ',
-            f'    columns: {self.df_ui.columns.to_list()}',
+            f'    columns ({len(cols)}): {cols}',
         ]
         print(*info_message, sep='\n')
         return self
