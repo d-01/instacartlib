@@ -12,7 +12,7 @@ def buy_counts(index, df_trns, **kwargs):
     total_buy_ratio: = total_buy / n_orders
     chance_buy_ratio: = total_buy / n_chances
     """
-    # oldest transaction reverse num = number of orders
+    # `order_r` for oldest transaction = number of orders
     n_orders = (
         df_trns
         .drop_duplicates('uid', keep='first')

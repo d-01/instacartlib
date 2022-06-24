@@ -193,16 +193,22 @@ def test_buy_delays(ui_index, dataframes_target):
     buy_delays = feature_extractors['003_ui_buy_delays.buy_delays']
 
     test_output = buy_delays(ui_index, **dataframes_target)
-    expected = pd.read_csv(io.StringIO('''
-           uid     iid  days_delay_max  days_delay_mid  days_passed  readyness_max  readyness_max_abs  readyness_mid  readyness_mid_abs
-        user_A  item_A   30.0   22.50   15.0  -15.0  15.0  -7.50  7.50
-        user_A  item_B   45.0   45.00   45.0    0.0   0.0   0.00  0.00
-        user_A  item_C   15.0   15.00   15.0    0.0   0.0   0.00  0.00
-        user_A  item_D  999.0  999.00  999.0    0.0   0.0   0.00  0.00
-        user_B  item_A   23.5   23.50   23.5    0.0   0.0   0.00  0.00
-        user_B  item_B  999.0  999.00  999.0    0.0   0.0   0.00  0.00
-        user_B  item_C   23.5   18.25   23.5    0.0   0.0   5.25  5.25
-        user_B  item_D   36.5   36.50   36.5    0.0   0.0   0.00  0.00
-    '''), sep=r'\s+').set_index(['uid', 'iid']).astype('float32')
+    expected = pd.DataFrame({
+        'uid': ['user_A', 'user_A', 'user_A', 'user_A', 'user_B', 'user_B',
+            'user_B', 'user_B'],
+        'iid': ['item_A', 'item_B', 'item_C', 'item_D', 'item_A', 'item_B',
+            'item_C', 'item_D'],
+        'days_delay_max': [30.0, 45.0, 15.0, 999.0, 23.5, 999.0, 23.5, 36.5],
+        'days_delay_mid': [22.5, 45.0, 15.0, 999.0, 23.5, 999.0, 18.25, 36.5],
+        'days_delay_mid_global': [23.5, 45.0, 15.0, 36.5, 23.5, 45.0, 15.0,
+             36.5],
+        'days_passed': [15.0, 45.0, 15.0, 999.0, 23.5, 999.0, 23.5, 36.5],
+        'readyness_max': [-15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        'readyness_max_abs': [15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        'readyness_mid': [-7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 5.25, 0.0],
+        'readyness_mid_abs': [7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 5.25, 0.0],
+        'readyness_mid_global': [-8.5, 0.0, 0.0, 962.5, 0.0, 954.0, 8.5, 0.0],
+        'readyness_mid_global_abs': [8.5, 0.0, 0.0, 962.5, 0.0, 954.0, 8.5, 0.0]
+    }).set_index(['uid', 'iid']).astype('float32')
     pd.testing.assert_frame_equal(test_output, expected)
 
