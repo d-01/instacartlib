@@ -14,7 +14,7 @@ def avg_cart_pos(index, df_trns, **kwargs):
         .groupby(['uid', 'iid'], sort=False)
         .cart_pos.mean()
         .astype('float32')
-        .to_frame('avg_cart_pos')
+        .to_frame('ui_avg_cart_pos')
         .reindex(index, fill_value=999)
     )
 

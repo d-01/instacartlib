@@ -123,21 +123,48 @@ def test_feature_extractors_output_valid(extractor_name, ui_index,
     '001_ui_buy_counts.buy_counts' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_ui_buy_counts(ui_index, dataframes):
-    freq = feature_extractors['001_ui_buy_counts.buy_counts']
+def test_ui_buy_counts():
+    df_trns = pd.read_csv(io.StringIO('''
+           uid     iid  order_r
+        user_A  item_A        2
+        user_A  item_A        1
+        user_A  item_B        1
+        user_B  item_A        1
+    '''), sep=r'\s+')
+    # user_A, order_1: [item_A]
+    # user_A, order_2: [item_A, item_B]
+    # user_B, order_1: [item_A]
 
-    test_output = freq(ui_index, **dataframes)
-    expected = pd.read_csv(io.StringIO('''
-           uid  iid  n_orders  n_chances  total_buy  total_buy_ratio  chance_buy_ratio
-        user_A  item_A  2  2  2  1.0  1.0
-        user_A  item_B  2  2  1  0.5  0.5
-        user_A  item_C  2  1  1  0.5  1.0
-        user_A  item_D  2  0  0  0.0  0.0
-        user_B  item_A  2  1  1  0.5  1.0
-        user_B  item_B  2  0  0  0.0  0.0
-        user_B  item_C  2  2  2  1.0  1.0
-        user_B  item_D  2  2  1  0.5  0.5
-    '''), sep=r'\s+').set_index(['uid', 'iid'])
+    dataframes = {'df_trns': df_trns}
+
+    ui_index = pd.read_csv(io.StringIO('''
+           uid     iid
+        user_A  item_A
+        user_A  item_B
+        user_B  item_A
+        user_B  item_B
+    '''), sep=r'\s+').set_index(['uid', 'iid']).index
+
+    expected = pd.DataFrame({
+        'u_n_orders': [2, 2, 1, 1],
+        'ui_n_chances': [2, 1, 1, 0],
+        'ui_total_buy': [2, 1, 1, 0],
+        'ui_total_buy_ratio': [1.0, 0.5, 1.0, 0.0],
+        'ui_chance_buy_ratio': [1.0, 1.0, 1.0, 0.0],
+        'u_n_transactions': [3, 3, 1, 1],
+        'u_unique_items': [2, 2, 1, 1],
+        'u_order_size_mid': [1.5, 1.5, 1.0, 1.0],
+        'i_n_popularity': [2, 1, 2, 1],
+        'i_n_orders_mid': [1.5, 1.0, 1.5, 1.0]
+    }, index=ui_index)
+    # Example: `'ui_total_buy': [2, 1, 1, 0]` means
+    #   user_A bought item_A 2 times
+    #   user_A bought item_B 1 time
+    #   user_B bought item_A 1 time
+    #   user_B bought item_B 0 times
+
+    extractor_fn = feature_extractors['001_ui_buy_counts.buy_counts']
+    test_output = extractor_fn(ui_index, **dataframes)
     pd.testing.assert_frame_equal(test_output, expected, check_dtype=False)
 
 
@@ -150,15 +177,15 @@ def test_avg_cart_pos(ui_index, dataframes):
 
     test_output = avg_cart_pos(ui_index, **dataframes)
     expected = pd.read_fwf(io.StringIO('''
-           uid     iid  avg_cart_pos
-        user_A  item_A           1.5
-        user_A  item_B           1.0
-        user_A  item_C           2.0
-        user_A  item_D         999.0
-        user_B  item_A           2.0
-        user_B  item_B         999.0
-        user_B  item_C           1.0
-        user_B  item_D           2.0
+           uid     iid  ui_avg_cart_pos
+        user_A  item_A              1.5
+        user_A  item_B              1.0
+        user_A  item_C              2.0
+        user_A  item_D            999.0
+        user_B  item_A              2.0
+        user_B  item_B            999.0
+        user_B  item_C              1.0
+        user_B  item_D              2.0
     ''')).set_index(['uid', 'iid']).astype('float32')
     pd.testing.assert_frame_equal(test_output, expected)
 
@@ -172,15 +199,15 @@ def test_in_target(ui_index, dataframes_target):
 
     test_output = in_target(ui_index, **dataframes_target)
     expected = pd.read_fwf(io.StringIO('''
-           uid     iid  in_target
-        user_A  item_A          1
-        user_A  item_B          0
-        user_A  item_C          1
-        user_A  item_D          0
-        user_B  item_A          1
-        user_B  item_B          0
-        user_B  item_C          1
-        user_B  item_D          0
+           uid     iid  ui_in_target
+        user_A  item_A             1
+        user_A  item_B             0
+        user_A  item_C             1
+        user_A  item_D             0
+        user_B  item_A             1
+        user_B  item_B             0
+        user_B  item_C             1
+        user_B  item_D             0
     ''')).set_index(['uid', 'iid']).astype('uint8')
     pd.testing.assert_frame_equal(test_output, expected)
 
@@ -190,25 +217,53 @@ def test_in_target(ui_index, dataframes_target):
     reason="feature extractor was not registered",
 )
 def test_buy_delays(ui_index, dataframes_target):
-    buy_delays = feature_extractors['003_ui_buy_delays.buy_delays']
+    df_trns = pd.read_csv(io.StringIO('''
+           uid     iid  days_until_same_item
+        user_A  item_A                  17.0
+        user_A  item_A                  11.0
+        user_A  item_B                  11.0
+        user_B  item_A                   3.0
+    '''), sep=r'\s+')
+    # user_A:
+    #             order_3  order_2  order_1
+    #       item
+    #     item_A       17        .       11
+    #     item_B        .        .       11
+    #
+    # user_B:
+    #             order_3  order_2  order_1
+    #       item
+    #     item_A        .        .        3
 
-    test_output = buy_delays(ui_index, **dataframes_target)
+    dataframes = {'df_trns': df_trns}
+
+    ui_index = pd.read_csv(io.StringIO('''
+           uid     iid
+        user_A  item_A
+        user_A  item_B
+        user_B  item_A
+        user_B  item_B
+    '''), sep=r'\s+').set_index(['uid', 'iid']).index
+
     expected = pd.DataFrame({
-        'uid': ['user_A', 'user_A', 'user_A', 'user_A', 'user_B', 'user_B',
-            'user_B', 'user_B'],
-        'iid': ['item_A', 'item_B', 'item_C', 'item_D', 'item_A', 'item_B',
-            'item_C', 'item_D'],
-        'days_delay_max': [30.0, 45.0, 15.0, 999.0, 23.5, 999.0, 23.5, 36.5],
-        'days_delay_mid': [22.5, 45.0, 15.0, 999.0, 23.5, 999.0, 18.25, 36.5],
-        'days_delay_mid_global': [23.5, 45.0, 15.0, 36.5, 23.5, 45.0, 15.0,
-             36.5],
-        'days_passed': [15.0, 45.0, 15.0, 999.0, 23.5, 999.0, 23.5, 36.5],
-        'readyness_max': [-15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        'readyness_max_abs': [15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        'readyness_mid': [-7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 5.25, 0.0],
-        'readyness_mid_abs': [7.5, 0.0, 0.0, 0.0, 0.0, 0.0, 5.25, 0.0],
-        'readyness_mid_global': [-8.5, 0.0, 0.0, 962.5, 0.0, 954.0, 8.5, 0.0],
-        'readyness_mid_global_abs': [8.5, 0.0, 0.0, 962.5, 0.0, 954.0, 8.5, 0.0]
-    }).set_index(['uid', 'iid']).astype('float32')
-    pd.testing.assert_frame_equal(test_output, expected)
+        'ui_days_delay_max': [17.0, 11.0, 3.0, 999.0],
+        'ui_days_delay_mid': [14.0, 11.0, 3.0, 999.0],
+        'i_days_delay_global_mid': [11.0, 11.0, 11.0, 11.0],
+        'ui_days_passed': [11.0, 11.0, 3.0, 999.0],
+        'ui_readyness_max': [-6.0, 0.0, 0.0, 0.0],
+        'ui_readyness_max_abs': [6.0, 0.0, 0.0, 0.0],
+        'ui_readyness_mid': [-3.0, 0.0, 0.0, 0.0],
+        'ui_readyness_mid_abs': [3.0, 0.0, 0.0, 0.0],
+        'ui_readyness_global_mid': [0.0, 0.0, -8.0, 988.0],
+        'ui_readyness_global_mid_abs': [0.0, 0.0, 8.0, 988.0]
+    }, index=ui_index)
+    # Example: `'ui_days_passed': [11.0, 11.0, 3.0, 999.0],` means
+    #   11 days passed since user_A last bought item_A
+    #   11 days passed since user_A last bought item_B
+    #   3 days passed since user_B last bought item_A
+    #   999 days passed since user_B last bought item_B
+
+    extractor_fn = feature_extractors['003_ui_buy_delays.buy_delays']
+    test_output = extractor_fn(ui_index, **dataframes)
+    pd.testing.assert_frame_equal(test_output, expected, check_dtype=False)
 

@@ -13,7 +13,7 @@ def in_target(index, df_trns_target, **kwargs):
         .groupby(['uid', 'iid'], sort=False)
         .size()
         .astype('uint8')
-        .to_frame('in_target')
+        .to_frame('ui_in_target')
         .reindex(index, fill_value=0)
     )
 
