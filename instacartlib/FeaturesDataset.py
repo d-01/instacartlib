@@ -23,7 +23,6 @@ Types of features:
 ```
 """
 
-from re import S
 from .feature_extractors import exports as feature_extractors
 from .DataFrameFileCache import DataFrameFileCache
 from .utils import get_df_info, increment_counter_suffix

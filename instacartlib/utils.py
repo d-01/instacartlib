@@ -72,3 +72,7 @@ def increment_counter_suffix(string, sep='_'):
         counter_str = '0'
     counter_incremented_str = str(int(counter_str) + 1)
     return f'{base}{sep}{counter_incremented_str.zfill(len(counter_str))}'
+
+
+def drop_duplicates(sequence):
+    return list(dict.fromkeys(sequence))

@@ -11,3 +11,8 @@ def test_imports_FeaturesDataset():
     from instacartlib import FeaturesDataset
     assert inspect.isclass(FeaturesDataset)
 
+
+def test_imports_FeaturesDataset():
+    from instacartlib import NextBasketPrediction
+    assert inspect.isclass(NextBasketPrediction)
+

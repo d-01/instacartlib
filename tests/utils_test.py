@@ -5,6 +5,7 @@ from instacartlib.utils import format_size
 from instacartlib.utils import get_df_info
 from instacartlib.utils import split_counter_suffix
 from instacartlib.utils import increment_counter_suffix
+from instacartlib.utils import drop_duplicates
 
 import warnings
 
@@ -117,3 +118,14 @@ def test_increment_counter_suffix_2_times(test_input, expected):
     output = increment_counter_suffix(output)
     assert output == expected
 
+
+
+@pytest.mark.parametrize("test_input,expected", [
+    ([], []),
+    ([0], [0]),
+    ([0, 0], [0]),
+    ([1, 0], [1, 0]),
+    ('bacabacbcbabacbab', ['b', 'a', 'c']),
+])
+def test_drop_duplicates(test_input, expected):
+    assert drop_duplicates(test_input) == expected
