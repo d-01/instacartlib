@@ -76,8 +76,8 @@ class NextBasketPrediction:
         self._model_trained = False
 
         self.path_dir = None
-        self._train_update_needed = True
-        self._predict_update_needed = True
+        self._update_train_needed = True
+        self._update_predict_needed = True
 
 
     def _print(self, message, indent=0):
@@ -91,8 +91,8 @@ class NextBasketPrediction:
 
     def add_data(self, path_dir):
         self.path_dir = path_dir
-        self._train_update_needed = True
-        self._predict_update_needed = True
+        self._update_train_needed = True
+        self._update_predict_needed = True
         return self
 
 
@@ -101,10 +101,10 @@ class NextBasketPrediction:
             raise ValueError('Model needs data to be trainded on. '
                 'Use `.add_data(path_dir)` to set path to directory with data.')
 
-        if self._train_update_needed:
+        if self._update_train_needed:
             _update_datasets(self.icds_train, self.features_train,
                 self.path_dir)
-            self._train_update_needed = False
+            self._update_train_needed = False
 
         x = self.features_train.df_ui.drop(columns='ui_in_target').values
         y = self.features_train.df_ui['ui_in_target'].values
@@ -127,42 +127,54 @@ class NextBasketPrediction:
 
 
     def load_model(self, path):
-        self.model = joblib.load(path)
-        self._model_trained = True
-        return self
-
-
-    def get_predictions(self, user_ids):
         if self.path_dir is None:
             raise ValueError('Model needs data to make predictions. '
                 'Use `.add_data(path_dir)` to set path to directory with data.')
+
+        self.model = joblib.load(path)
+        self._model_trained = True
+
+        if self._update_predict_needed:
+            _update_datasets(self.icds_predict, self.features_predict,
+                self.path_dir)
+            self._update_predict_needed = False
+
+        # Update predictions
+        x_test = self.features_predict.df_ui.values
+        y_prob = self.model.predict_proba(x_test)[:, 1]
+        self.predictions = (
+            pd.Series(
+                y_prob,
+                index=self.features_predict.df_ui.index,
+                name='in_target_prob'
+            )
+            .reset_index()
+            .sort_values(['uid', 'in_target_prob'], ascending=[True, False])
+        )
+        self._add_popular_products()
+        self.predictions = (
+            self.predictions
+            .reset_index()
+            .sort_values(['uid', 'index'])
+            .drop(columns='index')
+            .reset_index(drop=True)
+        )
+
+        return self
+
+
+    def get_predictions(self, user_ids, n_limit=10):
 
         if self._model_trained == False:
             raise ValueError('Model has to be trained to make predictions. '
                 'Use `.train_model()` or `.load_model(path)`.')
 
-        if self._predict_update_needed:
-            _update_datasets(self.icds_predict, self.features_predict,
-                self.path_dir)
-
-            x_test = self.features_predict.df_ui.values
-            y_prob = self.model.predict_proba(x_test)[:, 1]
-            self.predictions = (
-                pd.Series(
-                    y_prob,
-                    index=self.features_predict.df_ui.index,
-                    name='in_target_prob'
-                )
-                .reset_index()
-                .sort_values(['uid', 'in_target_prob'], ascending=[True, False])
-            )
-
-            self._predict_update_needed = False
-
         if np.isscalar(user_ids):
             user_ids = [user_ids]
         user_ids = list(user_ids)
         predictions = self.predictions[self.predictions.uid.isin(user_ids)]
+        if n_limit is not None:
+            predictions = predictions.groupby('uid', sort=False).head(n_limit)
 
         product_names = (
             self.icds_predict.df_prod
@@ -173,86 +185,119 @@ class NextBasketPrediction:
         return predictions
 
 
-    def predictions_to_csv(self, path, add_popular=True):
+    def _add_popular_products(self):
         """
-        1. Take top 10 predictions with max probability.
+        Take all users with less then 10 predicted products and add most
+        popular products. This function ensures that each user will have no
+        less then 10 predicted products.
 
-        If add_popular=True:
+        For each user with less then 10 predicted products:
+        1. Add 3 most popular products from the same aisle as the first
+           predicted product.
+        2. Add 3 most popular products from the same department as the first
+           predicted product.
+        3. Add 10 overall most popular products.
+        4. Drop duplicated products.
+        """
+        df_prod = (
+            self.icds_predict._products.df
+            .set_index('product_id')
+            .loc[:, ['aisle_id', 'department_id']]
+        )
+        #             aisle_id  department_id
+        # product_id
+        # 49688             73             11
 
-        2. If there is less then 10 predicted products take first one and
-           add 3 most popular products from the same aisle.
-        3. If there is still less then 10 predicted products take first one and
-           add 3 most popular products from the same department.
-        4. If there is still less then 10 predicted products add 10 overall most
-           popular products.
-        5. Drop duplicates and keep first 10 products from this list.
+        df_prod_n = (
+            self.icds_predict._transactions.df
+            .value_counts('product_id', sort=False)
+            .to_frame('n')
+            .join(df_prod)
+        )
+        #              n  aisle_id  department_id
+        # product_id
+        # 49688       55        73             11
+
+        aisle_id_top3_prod = (
+            df_prod_n
+            .groupby('aisle_id', sort=False)
+            .n.nlargest(3)
+            .reset_index()
+            .groupby('aisle_id')
+            .product_id.apply(list)
+        )
+        # aisle_id
+        # 134    [37923, 10607, 36885]
+
+        dept_id_top3_prod = (
+            df_prod_n
+            .groupby('department_id', sort=False)
+            .n.nlargest(3)
+            .reset_index()
+            .groupby('department_id')
+            .product_id.apply(list)
+        )
+        # department_id
+        # 21     [41149, 7035, 14010]
+
+        top10_prod = df_prod_n.nlargest(10, 'n').index.to_list()
+
+        uid_n_predictions = self.predictions.value_counts('uid')
+        uid_add_predictions = uid_n_predictions[uid_n_predictions < 10].index
+
+        uid_predicted_products = (
+            self.predictions
+            .drop_duplicates('uid', keep='first')
+            .set_index('uid')
+            .loc[uid_add_predictions, ['iid']]  # frame
+            # add `aisle_id` and `department_id` columns
+            .join(df_prod, on='iid')
+        )
+
+        aisle_top3 = (
+            uid_predicted_products
+            .aisle_id.map(aisle_id_top3_prod)
+            .explode()
+            .rename('iid')
+            .reset_index()
+        )
+        department_top3 = (
+            uid_predicted_products
+            .department_id.map(dept_id_top3_prod)
+            .explode()
+            .rename('iid')
+            .reset_index()
+        )
+        top10 = (
+            pd.Series(
+                [top10_prod] * len(uid_predicted_products),
+                index=uid_predicted_products.index)
+            .explode()
+            .rename('iid')
+            .reset_index()
+        )
+
+        self.predictions = (
+            pd.concat([self.predictions, aisle_top3, department_top3, top10],
+                axis='rows', ignore_index=True)
+            .drop_duplicates(['uid', 'iid'])
+        )
+
+
+    def predictions_to_csv(self, path):
+        """
+        user_id,product_id
+        1,196 12427 10258 25133 46149 38928 39657 49235 13032 35951
+        2,47209 1559 19156 18523 33754 16589 24852 21709 22124 32792
+        ...
         """
         n_limit=10
-
-        if add_popular:
-            df_prod = (
-                self.icds_predict._products.df
-                .set_index('product_id')
-                .loc[:, ['aisle_id', 'department_id']]
-            )
-            #             aisle_id  department_id
-            # product_id
-            # 49688             73             11
-
-            df_prod_n = (
-                self.icds_predict._transactions.df
-                .value_counts('product_id', sort=False)
-                .to_frame('n')
-                .join(df_prod)
-            )
-            #              n  aisle_id  department_id
-            # product_id
-            # 49688       55        73             11
-
-            aisle_id_top3_prod = (
-                df_prod_n
-                .groupby('aisle_id', sort=False)
-                .n.nlargest(3)
-                .reset_index()
-                .groupby('aisle_id')
-                .product_id.apply(list)
-            )
-            # aisle_id
-            # 134    [37923, 10607, 36885]
-
-            dept_id_top3_prod = (
-                df_prod_n
-                .groupby('department_id', sort=False)
-                .n.nlargest(3)
-                .reset_index()
-                .groupby('department_id')
-                .product_id.apply(list)
-            )
-            # department_id
-            # 21     [41149, 7035, 14010]
-
-            top10_prod = df_prod_n.nlargest(10, 'n').index.to_list()
 
         rows = ['user_id,product_id']
 
         for uid, iids in tqdm(self.predictions.groupby('uid').iid,
                 disable=(self.verbose < 1)):
-            iids = iids.to_list()
-
-            if add_popular and len(iids) < 10:
-                aisle_id = df_prod.aisle_id[iids[0]]
-                append_iids = aisle_id_top3_prod[aisle_id]
-                iids = drop_duplicates(iids + append_iids)
-
-                if len(iids) < 10:
-                    dept_id = df_prod.department_id[iids[0]]
-                    append_iids = dept_id_top3_prod[dept_id]
-                    iids = drop_duplicates(iids + append_iids)
-
-                    if len(iids) < 10:
-                        iids = drop_duplicates(iids + top10_prod)
-
-            iids = iids[:n_limit]
+            iids = iids.values[:n_limit]
             iid_list_str = ' '.join(map(str, iids))
             rows.append(f'{uid},{iid_list_str}')
 
