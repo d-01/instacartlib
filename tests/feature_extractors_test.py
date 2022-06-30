@@ -216,7 +216,7 @@ def test_in_target(ui_index, dataframes_target):
     '003_ui_buy_delays.buy_delays' not in feature_extractors,
     reason="feature extractor was not registered",
 )
-def test_buy_delays(ui_index, dataframes_target):
+def test_buy_delays():
     df_trns = pd.read_csv(io.StringIO('''
            uid     iid  days_until_same_item
         user_A  item_A                  17.0

@@ -61,7 +61,6 @@ class MODEL_DOWNLOAD_INFO:
     GDRIVE_ID = "1mWR7-_e4vHFvXcSj0NqdL4p-ILIqApuD"
 
 
-
 def _download_pretrained_model(path_dir='./instacart_pretrained_model',
         show_progress=False):
     path = download_from_info(MODEL_DOWNLOAD_INFO, path_dir,
@@ -75,7 +74,8 @@ def _update_datasets(instacart_dataset, features_dataset, path_dir):
 
 
 class NextBasketPrediction:
-    def __init__(self, verbose=0):
+    def __init__(self, model=None, scale_features=False, verbose=0):
+        self.scale_features = scale_features
         self.verbose = verbose
 
         self.icds_train = InstacartDataset(train=True, n_orders_limit=5,
@@ -88,12 +88,20 @@ class NextBasketPrediction:
             verbose=self.verbose)
         self.predictions = pd.DataFrame()
 
-        self.model = GradientBoostingClassifier(verbose=self.verbose)
-        self._model_trained = False
+        if model is None:
+            self.model = GradientBoostingClassifier(verbose=self.verbose)
+            self._model_trained = False
+        else:
+            self.model = model
+            self._model_trained = True
 
         self.path_dir = None
-        self._update_train_needed = True
-        self._update_predict_needed = True
+        self._update_trainset_needed = True
+        self._update_predictset_needed = True
+
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} model={self.model}>'
 
 
     def _print(self, message, indent=0):
@@ -107,8 +115,8 @@ class NextBasketPrediction:
 
     def add_data(self, path_dir):
         self.path_dir = path_dir
-        self._update_train_needed = True
-        self._update_predict_needed = True
+        self._update_trainset_needed = True
+        self._update_predictset_needed = True
         return self
 
 
@@ -117,13 +125,19 @@ class NextBasketPrediction:
             raise ValueError('Model needs data to be trainded on. '
                 'Use `.add_data(path_dir)` to set path to directory with data.')
 
-        if self._update_train_needed:
+        if self._update_trainset_needed:
             _update_datasets(self.icds_train, self.features_train,
                 self.path_dir)
-            self._update_train_needed = False
+            self._update_trainset_needed = False
 
         x = self.features_train.df_ui.drop(columns='ui_in_target').values
         y = self.features_train.df_ui['ui_in_target'].values
+
+        if self.scale_features:
+            x_std = x.std(axis=0)
+            x_std[x_std < 1e-6] = 1.
+            x_mean = x.mean(axis=0)
+            x = (x - x_mean) / x_std
 
         x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=.01,
             stratify=y)
@@ -153,14 +167,21 @@ class NextBasketPrediction:
         self.model = joblib.load(path)
         self._model_trained = True
 
-        if self._update_predict_needed:
+        if self._update_predictset_needed:
             _update_datasets(self.icds_predict, self.features_predict,
                 self.path_dir)
-            self._update_predict_needed = False
+            self._update_predictset_needed = False
 
         # Update predictions
         x_test = self.features_predict.df_ui.values
+        if self.scale_features:
+            x_std = x_test.std(axis=0)
+            x_std[x_std < 1e-6] = 1.
+            x_mean = x_test.mean(axis=0)
+            x_test = (x_test - x_mean) / x_std
+
         y_prob = self.model.predict_proba(x_test)[:, 1]
+
         self.predictions = (
             pd.Series(
                 y_prob,
@@ -183,7 +204,6 @@ class NextBasketPrediction:
 
 
     def get_predictions(self, user_ids, n_limit=10):
-
         if self._model_trained == False:
             raise ValueError('Model has to be trained to make predictions. '
                 'Use `.train_model()` or `.load_model(path)`.')
