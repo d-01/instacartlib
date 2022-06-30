@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import time
 
 from pathlib import Path
@@ -76,3 +77,36 @@ def increment_counter_suffix(string, sep='_'):
 
 def drop_duplicates(sequence):
     return list(dict.fromkeys(sequence))
+
+
+# Based on: https://stackoverflow.com/a/31278890/7204581
+def hash_for_file(path, algorithm='sha256', block_size=256*128,
+        human_readable=True):
+    """
+    Block size directly depends on the block size of your filesystem
+    to avoid performances issues
+    Here I have blocks of 4096 octets (Default NTFS)
+
+    Linux Ext4 block size
+    sudo tune2fs -l /dev/sda5 | grep -i 'block size'
+    > Block size:               4096
+
+    Input:
+        path: a path
+        algorithm: an algorithm in hashlib.algorithms
+                   ATM: ('sha256', 'md5', 'sha1', 'sha224', 'sha384', 'sha512')
+        block_size: a multiple of 128 corresponding to the block size of your
+        filesystem
+        human_readable: switch between digest() or hexdigest() output, default
+        hexdigest()
+    Output:
+        hash
+    """
+    hash_algo = hashlib.new(algorithm)
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(block_size), b''):
+             hash_algo.update(chunk)
+    if human_readable:
+        return hash_algo.hexdigest()
+    else:
+        return hash_algo.digest()

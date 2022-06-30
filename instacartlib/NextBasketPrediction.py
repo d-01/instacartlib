@@ -41,7 +41,9 @@ predicted_item_ids = nbp.predict(user_ids=[...])
 
 from instacartlib import InstacartDataset
 from instacartlib import FeaturesDataset
-from .utils import drop_duplicates
+from .utils import drop_duplicates, format_size, hash_for_file
+
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -303,6 +305,11 @@ class NextBasketPrediction:
 
         with open(path, 'wt', newline='') as f:
             f.write('\n'.join(rows))
+
+        fsize = Path(path).stat().st_size
+        print(f'{path}\n'
+              f'  {fsize} ({format_size(fsize)}), sha256:{hash_for_file(path)}'
+        )
 
 
 
