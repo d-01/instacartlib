@@ -41,7 +41,7 @@ predicted_item_ids = nbp.predict(user_ids=[...])
 
 from instacartlib import InstacartDataset
 from instacartlib import FeaturesDataset
-from .utils import drop_duplicates, format_size, hash_for_file
+from .utils import format_size, hash_for_file, download_from_info
 
 from pathlib import Path
 
@@ -53,6 +53,20 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingClassifier
 
 from tqdm import tqdm
+
+
+class MODEL_DOWNLOAD_INFO:
+    NAME = "gbc__shape_3451744_21.dump"  # 176KB
+    MD5 = "e3b715e578f6915a210e7c765bb7ff4f"
+    GDRIVE_ID = "1mWR7-_e4vHFvXcSj0NqdL4p-ILIqApuD"
+
+
+
+def _download_pretrained_model(path_dir='./instacart_pretrained_model',
+        show_progress=False):
+    path = download_from_info(MODEL_DOWNLOAD_INFO, path_dir,
+        show_progress=show_progress)
+    return path
 
 
 def _update_datasets(instacart_dataset, features_dataset, path_dir):
@@ -128,10 +142,13 @@ class NextBasketPrediction:
         return self
 
 
-    def load_model(self, path):
+    def load_model(self, path=None):
         if self.path_dir is None:
             raise ValueError('Model needs data to make predictions. '
                 'Use `.add_data(path_dir)` to set path to directory with data.')
+
+        if path is None:
+            path = _download_pretrained_model(show_progress=self.verbose > 0)
 
         self.model = joblib.load(path)
         self._model_trained = True
