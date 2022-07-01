@@ -55,15 +55,31 @@ from sklearn.ensemble import GradientBoostingClassifier
 from tqdm import tqdm
 
 
-class MODEL_DOWNLOAD_INFO:
+class GBC_MODEL_DOWNLOAD_INFO:
     NAME = "gbc__shape_3451744_21.dump"  # 176KB
     MD5 = "e3b715e578f6915a210e7c765bb7ff4f"
     GDRIVE_ID = "1mWR7-_e4vHFvXcSj0NqdL4p-ILIqApuD"
 
 
-def _download_pretrained_model(path_dir='./instacart_pretrained_model',
+class CATBOOST_MODEL_DOWNLOAD_INFO:
+    NAME = "catboost__shape_3451744_21_acc_0_840953.dump"  # 1.04MB
+    MD5 = "9ecdd7f536b0e46615038115611ac270"
+    GDRIVE_ID = "1CTtOFBZ6iT56JUhYKDs80I2x4Kdh9KQ6"
+
+
+MODELS_REGISTRY = {
+    'gbc': GBC_MODEL_DOWNLOAD_INFO,
+    'catboost': CATBOOST_MODEL_DOWNLOAD_INFO,
+}
+
+
+def _download_pretrained_model(id, path_dir='./instacart_pretrained_model',
         show_progress=False):
-    path = download_from_info(MODEL_DOWNLOAD_INFO, path_dir,
+    if id not in MODELS_REGISTRY:
+        raise ValueError(
+            f'Available models: {list(MODELS_REGISTRY)}; got: "{id}"')
+
+    path = download_from_info(MODELS_REGISTRY[id], path_dir,
         show_progress=show_progress)
     return path
 
@@ -125,11 +141,26 @@ class NextBasketPrediction:
             raise ValueError('Model needs data to be trainded on. '
                 'Use `.add_data(path_dir)` to set path to directory with data.')
 
+        self._extract_features_for_train()
+        x_train, x_val, y_train, y_val = self._get_xy_train_split()
+
+        self.model.fit(x_train, y_train)
+        self._model_trained = True
+
+        self._print_models_accuracy(x_val, y_val)
+        return self
+
+
+    def _extract_features_for_train(self):
+        # Preprocess raw transactions for train (if not already)
+        # Update self.features_train
         if self._update_trainset_needed:
             _update_datasets(self.icds_train, self.features_train,
                 self.path_dir)
             self._update_trainset_needed = False
 
+
+    def _get_xy_train_split(self):
         x = self.features_train.df_ui.drop(columns='ui_in_target').values
         y = self.features_train.df_ui['ui_in_target'].values
 
@@ -139,16 +170,13 @@ class NextBasketPrediction:
             x_mean = x.mean(axis=0)
             x = (x - x_mean) / x_std
 
-        x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=.01,
-            stratify=y)
+        return train_test_split(x, y, test_size=.01, stratify=y)
 
-        self.model.fit(x_train, y_train)
-        self._model_trained = True
 
+    def _print_models_accuracy(self, x_val, y_val):
         y_pred = self.model.predict(x_val)
         acc = np.mean(y_pred == y_val)
         self._print(f'Model\'s accuracy: {acc}')
-        return self
 
 
     def save_model(self, path):
@@ -156,31 +184,35 @@ class NextBasketPrediction:
         return self
 
 
-    def load_model(self, path=None):
+    def load_model(self, id='gbc', path=None):
+        """
+        id: {'gbc', 'catboost'}
+            Automatically download and use one of pretrained models. `id` is
+            ignored if `path` is provided.
+            Note: 'catboost' model requires catboost library to be importable
+            (use `pip install catboost` to install).
+        path: str
+            Load model from save file (created with `.save_model()`).
+        """
         if self.path_dir is None:
             raise ValueError('Model needs data to make predictions. '
                 'Use `.add_data(path_dir)` to set path to directory with data.')
 
         if path is None:
-            path = _download_pretrained_model(show_progress=self.verbose > 0)
+            path = _download_pretrained_model(id,
+                show_progress=self.verbose > 0)
 
         self.model = joblib.load(path)
         self._model_trained = True
 
-        if self._update_predictset_needed:
-            _update_datasets(self.icds_predict, self.features_predict,
-                self.path_dir)
-            self._update_predictset_needed = False
+        self.update_predictions()
+        return self
 
-        # Update predictions
-        x_test = self.features_predict.df_ui.values
-        if self.scale_features:
-            x_std = x_test.std(axis=0)
-            x_std[x_std < 1e-6] = 1.
-            x_mean = x_test.mean(axis=0)
-            x_test = (x_test - x_mean) / x_std
 
-        y_prob = self.model.predict_proba(x_test)[:, 1]
+    def update_predictions(self):
+        self._extract_features_for_prediction()
+        x_pred = self._get_x_pred()
+        y_prob = self.model.predict_proba(x_pred)[:, 1]
 
         self.predictions = (
             pd.Series(
@@ -199,29 +231,26 @@ class NextBasketPrediction:
             .drop(columns='index')
             .reset_index(drop=True)
         )
-
         return self
 
 
-    def get_predictions(self, user_ids, n_limit=10):
-        if self._model_trained == False:
-            raise ValueError('Model has to be trained to make predictions. '
-                'Use `.train_model()` or `.load_model(path)`.')
+    def _extract_features_for_prediction(self):
+        # Preprocess raw transactions for predict (if not already)
+        # Update self.features_predict
+        if self._update_predictset_needed:
+            _update_datasets(self.icds_predict, self.features_predict,
+                self.path_dir)
+            self._update_predictset_needed = False
 
-        if np.isscalar(user_ids):
-            user_ids = [user_ids]
-        user_ids = list(user_ids)
-        predictions = self.predictions[self.predictions.uid.isin(user_ids)]
-        if n_limit is not None:
-            predictions = predictions.groupby('uid', sort=False).head(n_limit)
 
-        product_names = (
-            self.icds_predict.df_prod
-            .set_index('iid')
-            .product_name
-        )
-        predictions = predictions.join(product_names, on='iid')
-        return predictions
+    def _get_x_pred(self):
+        x_pred = self.features_predict.df_ui.values
+        if self.scale_features:
+            x_std = x_pred.std(axis=0)
+            x_std[x_std < 1e-6] = 1.
+            x_mean = x_pred.mean(axis=0)
+            x_pred = (x_pred - x_mean) / x_std
+        return x_pred
 
 
     def _add_popular_products(self):
@@ -321,6 +350,27 @@ class NextBasketPrediction:
                 axis='rows', ignore_index=True)
             .drop_duplicates(['uid', 'iid'])
         )
+
+
+    def get_predictions(self, user_ids, n_limit=10):
+        if self._model_trained == False:
+            raise ValueError('Model has to be trained to make predictions. '
+                'Use `.train_model()` or `.load_model(path)`.')
+
+        if np.isscalar(user_ids):
+            user_ids = [user_ids]
+        user_ids = list(user_ids)
+        predictions = self.predictions[self.predictions.uid.isin(user_ids)]
+        if n_limit is not None:
+            predictions = predictions.groupby('uid', sort=False).head(n_limit)
+
+        product_names = (
+            self.icds_predict.df_prod
+            .set_index('iid')
+            .product_name
+        )
+        predictions = predictions.join(product_names, on='iid')
+        return predictions
 
 
     def predictions_to_csv(self, path):
